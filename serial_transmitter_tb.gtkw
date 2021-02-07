@@ -1,0 +1,32 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Sun Feb  7 04:48:37 2021
+[*]
+[dumpfile] "/home/kaelin/repos/apio-upduino-template/serial_transmitter_tb.vcd"
+[dumpfile_mtime] "Sun Feb  7 04:47:37 2021"
+[dumpfile_size] 30889753
+[savefile] "/home/kaelin/repos/apio-upduino-template/serial_transmitter_tb.gtkw"
+[timestart] 0
+[size] 1000 629
+[pos] 113 247
+*-14.000000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] serial_transmitter_tb.
+[sst_width] 192
+[signals_width] 222
+[sst_expanded] 1
+[sst_vpaned_height] 167
+@28
+serial_transmitter_tb.reset
+serial_transmitter_tb.clock
+@22
+serial_transmitter_tb.u_serial_transmitter.clock_divider[10:0]
+serial_transmitter_tb.tx_data[7:0]
+@28
+serial_transmitter_tb.tx_data_available
+@22
+serial_transmitter_tb.u_serial_transmitter.data_shift_buffer_remaining[3:0]
+@28
+serial_transmitter_tb.serial_tx
+serial_transmitter_tb.tx_ready
+[pattern_trace] 1
+[pattern_trace] 0
