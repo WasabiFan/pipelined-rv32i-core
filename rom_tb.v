@@ -8,7 +8,7 @@ module rom_tb();
 
     reg clock;
     reg [31:0] addr;
-    wire [31:0] rdata;
+    wire [31:0] r_data;
 
     rom #(
         // TODO: transpile testbenches with sv2v to avoid this 
@@ -17,7 +17,7 @@ module rom_tb();
     ) u_rom (
         .clock    (clock),
         .addr     (addr),
-        .rdata    (rdata)
+        .r_data    (r_data)
     );
 
     initial begin
@@ -30,7 +30,7 @@ module rom_tb();
     end
 
     initial begin
-        repeat(2000) begin
+        repeat(5000) begin
             @(posedge clock); addr <= addr + 1;
         end
 
