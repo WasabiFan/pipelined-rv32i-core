@@ -1,7 +1,7 @@
 module rom(
     input logic clock,
     input logic [XLEN-1:0] addr,
-    output logic [31:0] r_data
+    output logic [XLEN-1:0] r_data
 );
     // TODO: yosys does parameter replacements before instantiation by default,
     // so using these doesn't actually work. Need to figure out how to pass
@@ -9,7 +9,7 @@ module rom(
     parameter depth = 1024;
     parameter init_file = "mem.hex";
 
-    reg [31:0] memory[0:depth-1];
+    reg [XLEN-1:0] memory[0:depth-1];
 
     initial begin
         $readmemh(init_file, memory);
