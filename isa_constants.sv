@@ -1,0 +1,1 @@
+parameter XLEN = 32;
