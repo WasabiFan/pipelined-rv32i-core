@@ -6,9 +6,10 @@ module top (
   output wire spi_cs,
   output wire serial_txd
 );
-
+    // Explicitly disable the SPI flash since it shares data lines with UART
     assign spi_cs = 1'b1;
 
+    // Use GPIO pin 2 as reset. Tie to ground for reset. "reset" here is active-high.
     logic reset;
     assign reset = ~gpio_2;
 
@@ -32,8 +33,27 @@ module top (
       .serial_tx            (serial_txd)
     );
 
-    assign serial_tx_data = 8'd65;
-    assign serial_tx_data_available = serial_tx_ready;
+    // Dummy data to demonstrate serial transmission
+    `define text "Hello world!\r\n"
+    logic [$bits(`text)-1:0] serial_string_buf;
+    localparam text_len = $bits(serial_string_buf);
+    logic last_serial_tx_ready;
+
+    assign serial_tx_data_available = 1'b1;
+    assign serial_tx_data = serial_string_buf[text_len-1:text_len-8];
+
+    always_ff @(posedge int_osc) begin
+      if (reset) begin
+        serial_string_buf <= `text;
+        last_serial_tx_ready <= 1'b0;
+      end else if (serial_tx_ready && !last_serial_tx_ready) begin
+        serial_string_buf <= { serial_string_buf[text_len-8-1:0], serial_string_buf[text_len-1:text_len-8] };
+        last_serial_tx_ready <= serial_tx_ready;
+      end else begin
+        serial_string_buf <= serial_string_buf;
+        last_serial_tx_ready <= serial_tx_ready;
+      end
+    end
 
     // Counter for LED pattern
     always @(posedge int_osc) begin
@@ -45,7 +65,8 @@ module top (
       .RGBLEDEN(1'b1                                            ),
       .RGB0PWM (frequency_counter_i[25]&frequency_counter_i[24] ),
       .RGB1PWM (frequency_counter_i[25]&~frequency_counter_i[24]),
-      .RGB2PWM (reset),
+      // red LED tied to "reset" to indicate when you're triggering reset
+      .RGB2PWM (reset                                           ),
       .CURREN  (1'b1                                            ),
       .RGB0    (led_green                                       ),
       .RGB1    (led_blue                                        ),

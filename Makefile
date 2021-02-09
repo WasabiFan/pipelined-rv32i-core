@@ -10,7 +10,7 @@ all: all.v verify lint build
 # sources at once and output a single Verilog file. So we have it combine them
 # into "all.v".
 all.v: $(SOURCE_SV_FILES)
-	CONTENTS=$$(sv2v $^) && echo "$$CONTENTS" > $@
+	sv2v $^ > $@
 
 verify: all.v
 	apio verify
@@ -29,7 +29,7 @@ upload: all.v
 	apio upload
 
 %_tb.v: isa_types.sv %_tb.sv
-	CONTENTS=$$(sv2v $^) && echo "$$CONTENTS" > $@
+	sv2v $^ > $@
 
 # Apio only supports one testbench (it adds all *_tb.v files at once); the below
 # is an expansion of their original rules, with support for multiple testbenches.
@@ -39,8 +39,8 @@ upload: all.v
 %_tb.vcd: %_tb.out
 	apio raw "vvp -M \"$(IVERILOG_ROOT)/lib/ivl\" $<"
 
-# testbenches should be plain Verilog files ending in "_tb.v". For some file
-# "mymodule_tb.v", simulate with "make sim-mymodule".
+# testbenches should be SystemVerilog ending in "_tb.v". For some file
+# "mymodule_tb.sv", simulate with "make sim-mymodule".
 sim-%: %_tb.vcd
 	apio raw "gtkwave $< $(patsubst %.vcd, %.gtkw, $<)"
 
