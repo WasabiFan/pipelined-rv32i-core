@@ -20,7 +20,7 @@ verify: all.v
 # Note: verilator does not work with non-synthesizable language features,
 # so testbenches aren't linted.
 lint:
-	apio raw "verilator --lint-only -v $(CELLS_SIM_PATH) $(SOURCE_SV_FILES)"
+	apio raw "verilator --lint-only --top-module top -v $(CELLS_SIM_PATH) $(SOURCE_SV_FILES)"
 
 build: all.v
 	apio build

@@ -1,0 +1,2 @@
+`define SIGEXT(VALUE, FROM, TO) { {(TO-FROM){VALUE[FROM-1]}}, VALUE[FROM-1:0] }
+`define ZEXT(VALUE, FROM, TO) { {(TO-FROM){1'b0}}, VALUE[FROM-1:0] }
