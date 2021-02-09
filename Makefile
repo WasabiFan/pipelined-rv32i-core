@@ -25,6 +25,9 @@ lint:
 build: all.v
 	apio build
 
+build-verbose: all.v
+	apio build --verbose
+
 upload: all.v
 	apio upload
 
