@@ -10,6 +10,7 @@ module hart(
     input logic clock,
     input logic reset,
     input logic [XLEN-1:0] memory_mapped_io_r_data,
+    input logic memory_mapped_io_write_complete,
     output mem_write_control_t memory_mapped_io_control
 );
     parameter reset_vector   = 32'h00010000;
@@ -161,7 +162,7 @@ module hart(
                 next_stage = STAGE_WRITEBACK;
             end
             STAGE_WRITEBACK:         begin
-                current_stage_is_complete = 1'b1;
+                current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
                 next_stage = STAGE_INSTRUCTION_FETCH;
             end
         endcase
