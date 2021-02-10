@@ -32,4 +32,9 @@ typedef struct packed {
     logic [XLEN-1:0] i_imm_input, s_imm_input, u_imm_input, j_imm_input, b_imm_input;
 } decoded_instruction_t;
 
+typedef struct packed {
+    logic [XLEN-1:0] value;
+    logic enable;
+} enableable_word_t;
+
 `endif
