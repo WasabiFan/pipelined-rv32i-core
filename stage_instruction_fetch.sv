@@ -12,6 +12,8 @@ module stage_instruction_fetch(
     output logic [XLEN-1:0] mem_addr,
     output logic [ILEN-1:0] instr_bits
 );
+    // TODO: in theory, we could make this a true one-cycle stage by
+    // muxing between the incoming register value and our own register.
 
     logic [1:0] remaining_read_cycles, next_remaining_read_cycles;
     logic is_halted, next_is_halted;
