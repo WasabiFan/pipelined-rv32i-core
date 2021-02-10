@@ -33,8 +33,21 @@ typedef struct packed {
 } decoded_instruction_t;
 
 typedef struct packed {
+    logic [XLEN-1:0] target_addr;
+    logic enable;
+} jump_control_t;
+
+typedef struct packed {
+    logic [XLEN-1:0] addr;
+    logic [XLEN-1:0] value;
+    write_width_t width;
+    logic enable;
+} mem_write_control_t;
+
+typedef struct packed {
+    rv_reg_t which_register;
     logic [XLEN-1:0] value;
     logic enable;
-} enableable_word_t;
+} reg_write_control_t;
 
 `endif
