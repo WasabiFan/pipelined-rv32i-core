@@ -8,7 +8,9 @@ typedef enum {
 
 module hart(
     input logic clock,
-    input logic reset
+    input logic reset,
+    input logic [XLEN-1:0] memory_mapped_io_r_data,
+    output mem_write_control_t memory_mapped_io_control
 );
     parameter reset_vector   = 32'h00010000;
     parameter ram_start_addr = 32'h00020000;
@@ -27,15 +29,15 @@ module hart(
     logic [XLEN-1:0] data_memory_addr, data_memory_w_data, data_memory_r_data;
     write_width_t data_memory_w_width;
     logic data_memory_w_enable;
-    ram data_memory (
-        .clock       (clock),
-        // RAM cell mapped starting at the ram_start address
-        // TODO: consolidate this logic and enable mem-mapped peripherals
-        .addr        (data_memory_addr - ram_start_addr),
-        .w_data      (data_memory_w_data),
-        .w_width     (data_memory_w_width),
-        .w_enable    (data_memory_w_enable),
-        .r_data      (data_memory_r_data)
+    memory #(.ram_start_addr(ram_start_addr)) data_memory (
+        .clock                       (clock),
+        .addr                        (data_memory_addr),
+        .w_data                      (data_memory_w_data),
+        .w_width                     (data_memory_w_width),
+        .w_enable                    (data_memory_w_enable),
+        .memory_mapped_io_r_data     (memory_mapped_io_r_data),
+        .r_data                      (data_memory_r_data),
+        .memory_mapped_io_control    (memory_mapped_io_control)
     );
 
     logic [XLEN-1:0] instruction_memory_addr, instruction_memory_r_data;
