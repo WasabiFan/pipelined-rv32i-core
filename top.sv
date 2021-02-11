@@ -13,7 +13,9 @@ module top (
 
     // Use GPIO pin 2 as reset. Tie to ground for reset. "reset" here is active-high.
     logic reset;
-    assign reset = ~gpio_2;
+    always_ff @(posedge int_osc) begin
+        reset <= ~gpio_2;
+    end
 
     logic  int_osc;
 
