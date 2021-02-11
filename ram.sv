@@ -21,19 +21,29 @@ module ram(
     assign r_data = r_data_whole_word >> (r_addr_offset_within_word * 8);
     assign w_data_whole_word = w_data << (w_addr_offset_within_word * 8);
 
-    logic [31:0] w_word_write_mask;
+    logic [3:0] w_word_byte_enable;
     always_comb begin
         case (w_width)
-            write_byte:     w_word_write_mask = 32'h000000FF << (w_addr_offset_within_word * 8);
-            write_halfword: w_word_write_mask = 32'h0000FFFF << (w_addr_offset_within_word * 8);
-            write_word:     w_word_write_mask = 32'hFFFFFFFF;
-            default:        w_word_write_mask = 32'h00000000; // Shouldn't happen
+            write_byte:     w_word_byte_enable = 4'b0001 << w_addr_offset_within_word;
+            write_halfword: w_word_byte_enable = 4'b0011 << w_addr_offset_within_word;
+            write_word:     w_word_byte_enable = 4'b1111;
+            default:        w_word_byte_enable = 4'b0000; // Shouldn't happen
         endcase
     end
 
     always_ff @(posedge clock) begin
         if (w_enable) begin
-            memory[addr_whole_word] <= (w_data_whole_word & w_word_write_mask) | (memory[addr_whole_word] & ~w_word_write_mask);
+            if (w_word_byte_enable[0])
+                memory[addr_whole_word][7:0] <= w_data_whole_word[7:0];
+
+            if (w_word_byte_enable[1])
+                memory[addr_whole_word][15:8] <= w_data_whole_word[15:8];
+
+            if (w_word_byte_enable[2])
+                memory[addr_whole_word][23:16] <= w_data_whole_word[23:16];
+
+            if (w_word_byte_enable[3])
+                memory[addr_whole_word][31:24] <= w_data_whole_word[31:24];
         end
 
         r_addr_offset_within_word <= addr[1:0];
