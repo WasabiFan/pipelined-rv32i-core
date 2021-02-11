@@ -79,6 +79,8 @@ module top (
         end
     end
 
+    assign memory_mapped_io_r_data = '0;
+
     logic led_blue_control, led_green_control;
     always_ff @(posedge int_osc) begin
         if (reset) begin

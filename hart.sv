@@ -162,7 +162,7 @@ module hart(
                 next_stage = STAGE_WRITEBACK;
             end
             STAGE_WRITEBACK:         begin
-                current_stage_is_complete = 1'b1;// !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
+                current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
                 next_stage = STAGE_INSTRUCTION_FETCH;
             end
             default: begin
