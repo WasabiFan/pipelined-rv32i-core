@@ -154,7 +154,8 @@ module hart(
                 next_stage = STAGE_COMPUTE;
             end
             STAGE_COMPUTE:           begin
-                current_stage_is_complete = compute_is_complete;
+                // TODO: the below assignment was misbehaving (???), should troubleshoot
+                current_stage_is_complete = 1'b1;// compute_is_complete;
                 next_stage = STAGE_MEMORY_STORE;
             end
             STAGE_MEMORY_STORE:      begin

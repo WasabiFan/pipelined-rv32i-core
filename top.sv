@@ -17,7 +17,15 @@ module top (
         reset <= ~gpio_2;
     end
 
-    logic  int_osc;
+    // TODO: see whether lower clock is necessary
+    logic core_clock, serial_clock, int_osc;
+    assign serial_clock = int_osc;
+    assign core_clock = clock_div == 0;
+
+    logic [1:0] clock_div;
+    always_ff @(posedge int_osc) begin
+        clock_div <= clock_div + 1;
+    end
 
     // Internal oscillator
     /* verilator lint_off PINMISSING */
@@ -28,7 +36,7 @@ module top (
     logic [7:0] serial_tx_data;
     logic serial_tx_data_available, serial_tx_ready;
     serial_transmitter serial_out (
-        .clock                (int_osc),
+        .clock                (serial_clock),
         .reset                (reset),
         .tx_data              (serial_tx_data),
         .tx_data_available    (serial_tx_data_available),
@@ -40,7 +48,7 @@ module top (
     logic memory_mapped_io_write_complete;
     mem_write_control_t memory_mapped_io_control;
     hart core (
-        .clock                           (int_osc),
+        .clock                           (core_clock),
         .reset                           (reset),
         .memory_mapped_io_r_data         (memory_mapped_io_r_data),
         .memory_mapped_io_write_complete (memory_mapped_io_write_complete),
@@ -48,7 +56,7 @@ module top (
     );
 
     logic serial_tx_write_started;
-    always_ff @(posedge int_osc) begin
+    always_ff @(posedge core_clock) begin
         if (reset) begin
             serial_tx_write_started <= 1'b0;
         end else begin
@@ -84,7 +92,7 @@ module top (
     assign memory_mapped_io_r_data = '0;
 
     logic led_blue_control, led_green_control;
-    always_ff @(posedge int_osc) begin
+    always_ff @(posedge core_clock) begin
         if (reset) begin
             led_blue_control <= 1'b0;
             led_green_control <= 1'b0;
@@ -105,8 +113,8 @@ module top (
     // LED driver
     SB_RGBA_DRV RGB_DRIVER (
         .RGBLEDEN(1'b1                                            ),
-        .RGB0PWM (led_blue_control),
-        .RGB1PWM (led_green_control),
+        .RGB0PWM (led_green_control),
+        .RGB1PWM (led_blue_control),
         // red LED tied to "reset" to indicate when you're triggering reset
         .RGB2PWM (reset                                           ),
         .CURREN  (1'b1                                            ),
