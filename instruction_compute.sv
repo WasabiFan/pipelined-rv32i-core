@@ -44,8 +44,8 @@ module instruction_compute (
                 control_rd_out.which_register = curr_instr.rd;
                 case (curr_instr.funct3)
                     `FUNCT3_ADDI:  control_rd_out.value = reg_rs1_val + curr_instr.i_imm_input;
-                    `FUNCT3_SLTI:  control_rd_out.value = signed'(reg_rs1_val) < signed'(curr_instr.i_imm_input);
-                    `FUNCT3_SLTIU: control_rd_out.value = reg_rs1_val < curr_instr.i_imm_input;
+                    `FUNCT3_SLTI:  control_rd_out.value = signed'(reg_rs1_val) < signed'(curr_instr.i_imm_input) ? 1 : 0;
+                    `FUNCT3_SLTIU: control_rd_out.value = reg_rs1_val < curr_instr.i_imm_input ? 1 : 0;
                     `FUNCT3_XORI:  control_rd_out.value = reg_rs1_val ^ curr_instr.i_imm_input;
                     `FUNCT3_ORI:   control_rd_out.value = reg_rs1_val | curr_instr.i_imm_input;
                     `FUNCT3_ANDI:  control_rd_out.value = reg_rs1_val & curr_instr.i_imm_input;
@@ -67,8 +67,8 @@ module instruction_compute (
                         default:     control_rd_out.value = 'X;
                     endcase
                     `FUNCT3_SLL:    control_rd_out.value = reg_rs1_val << reg_rs2_val[4:0];
-                    `FUNCT3_SLT:    control_rd_out.value = signed'(reg_rs1_val) < signed'(reg_rs2_val);
-                    `FUNCT3_SLTU:   control_rd_out.value = reg_rs1_val < reg_rs2_val;
+                    `FUNCT3_SLT:    control_rd_out.value = signed'(reg_rs1_val) < signed'(reg_rs2_val) ? 1 : 0;
+                    `FUNCT3_SLTU:   control_rd_out.value = reg_rs1_val < reg_rs2_val ? 1 : 0;
                     `FUNCT3_XOR:    control_rd_out.value = reg_rs1_val ^ reg_rs2_val;
                     `FUNCT3_OR:     control_rd_out.value = reg_rs1_val | reg_rs2_val;
                     `FUNCT3_AND:    control_rd_out.value = reg_rs1_val & reg_rs2_val;

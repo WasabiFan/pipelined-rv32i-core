@@ -10,7 +10,7 @@ module stage_memory_load(
     output logic [XLEN-1:0] mem_addr,
     output logic [XLEN-1:0] loaded_value
 );
-    logic [1:0] remaining_read_cycles, next_remaining_read_cycles;
+    logic [0:0] remaining_read_cycles, next_remaining_read_cycles;
 
     logic read_complete;
     assign read_complete = remaining_read_cycles == 0;
@@ -20,7 +20,7 @@ module stage_memory_load(
     assign mem_addr = i_effective_addr;
 
     always_comb begin
-        if (enable) next_remaining_read_cycles = remaining_read_cycles - 2'b1;
+        if (enable) next_remaining_read_cycles = remaining_read_cycles - 1'b1;
         else        next_remaining_read_cycles = mem_read_latency;
     end
 

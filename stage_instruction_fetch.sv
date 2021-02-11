@@ -15,7 +15,7 @@ module stage_instruction_fetch(
     // TODO: in theory, we could make this a true one-cycle stage by
     // muxing between the incoming register value and our own register.
 
-    logic [1:0] remaining_read_cycles, next_remaining_read_cycles;
+    logic [0:0] remaining_read_cycles, next_remaining_read_cycles;
     logic is_halted, next_is_halted;
 
     logic read_complete;
@@ -35,7 +35,7 @@ module stage_instruction_fetch(
     always_comb begin
         // TODO: with the memories on the UPduino, we probably could replace
         // remaining_read_cycles with a single bit 
-        if (enable) next_remaining_read_cycles = remaining_read_cycles - 2'b1;
+        if (enable) next_remaining_read_cycles = remaining_read_cycles - 1'b1;
         else        next_remaining_read_cycles = mem_read_latency;
     end
 

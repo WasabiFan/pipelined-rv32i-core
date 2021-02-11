@@ -48,7 +48,6 @@ module stage_compute (
 
             control_jump_target.target_addr <= 'x;
 
-
         end else if (enable) begin
             control_rd_out           <= next_control_rd_out;
             control_store            <= next_control_store;

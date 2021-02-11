@@ -21,8 +21,8 @@ module register_file(
         if (reset) begin
             xregs[0] <= 0;
             // Not required, but for reproducibility...
-            xregs <= '0;
-        end else if (write_control.enable && write_control.which_register) begin // avoid writing to x0
+            xregs <= '{default:0};
+        end else if (write_control.enable && write_control.which_register != 0) begin // avoid writing to x0
             xregs <= xregs;
             xregs[write_control.which_register] <= write_control.value;
         end else begin

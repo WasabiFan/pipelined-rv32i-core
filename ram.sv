@@ -27,6 +27,7 @@ module ram(
             write_byte:     w_word_write_mask = 32'h000000FF << (w_addr_offset_within_word * 8);
             write_halfword: w_word_write_mask = 32'h0000FFFF << (w_addr_offset_within_word * 8);
             write_word:     w_word_write_mask = 32'hFFFFFFFF;
+            default:        w_word_write_mask = 32'h00000000; // Shouldn't happen
         endcase
     end
 
