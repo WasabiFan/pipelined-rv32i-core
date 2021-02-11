@@ -23,7 +23,7 @@ lint:
 	apio raw "verilator --lint-only --top-module top -v $(CELLS_SIM_PATH) $(SOURCE_SV_FILES)"
 
 build: all.v
-	apio build
+	time apio build
 
 build-verbose: all.v
 	apio build --verbose
