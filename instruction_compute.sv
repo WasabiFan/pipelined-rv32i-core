@@ -19,6 +19,7 @@ module instruction_compute (
 	assign s_effective_addr = curr_instr.s_imm_input + reg_rs1_val;
 
 
+    // TODO: why'd I get these from the immediate rather than funct7? Seems silly.
     logic [4:0] shamnt;
     assign shamnt = curr_instr.i_imm_input[4:0];
     logic shift_type;
@@ -70,6 +71,9 @@ module instruction_compute (
                     `FUNCT3_SLT:    control_rd_out.value = signed'(reg_rs1_val) < signed'(reg_rs2_val) ? 1 : 0;
                     `FUNCT3_SLTU:   control_rd_out.value = reg_rs1_val < reg_rs2_val ? 1 : 0;
                     `FUNCT3_XOR:    control_rd_out.value = reg_rs1_val ^ reg_rs2_val;
+                    `FUNCT3_SRL_SRA:
+                        if (shift_type) control_rd_out.value = signed'(reg_rs1_val ) >>> reg_rs2_val;
+                        else            control_rd_out.value = reg_rs1_val >> reg_rs2_val;
                     `FUNCT3_OR:     control_rd_out.value = reg_rs1_val | reg_rs2_val;
                     `FUNCT3_AND:    control_rd_out.value = reg_rs1_val & reg_rs2_val;
                     default: control_rd_out.value = 'X;

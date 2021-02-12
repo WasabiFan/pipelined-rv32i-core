@@ -29,7 +29,7 @@ parameter ILEN = 32;
 `define FUNCT3_SLT     3'b010
 `define FUNCT3_SLTU    3'b011
 `define FUNCT3_XOR     3'b100
-// Omitted: SRL, SRA
+`define FUNCT3_SRL_SRA 3'b101
 `define FUNCT3_OR      3'b110
 `define FUNCT3_AND     3'b111
 `define FUNCT7_ADD     7'b0000000
