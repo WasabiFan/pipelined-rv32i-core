@@ -17,6 +17,7 @@ typedef __gnuc_va_list va_list;
 void use(int);
 void use_ptr(void *);
 void mmio_write32(void *addr, uint32_t data);
+void mmio_write8(void *addr, uint8_t data);
 uint32_t mmio_read32(void *addr);
 
 int isnumber(char ch);

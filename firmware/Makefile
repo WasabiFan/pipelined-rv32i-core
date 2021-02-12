@@ -28,6 +28,7 @@ firmware.elf: $(SOURCE_S:.s=.o) $(SOURCE_C:.c=.o)
 	$(LD) $(LDFLAGS) -o firmware.elf $(SOURCE_S:.s=.o) $(SOURCE_C:.c=.o) $(LDPOSTFLAGS)
 
 firmware_text.img: firmware.elf
+	# TODO: rodata is ignored
 	$(OBJCOPY) -O binary --only-section .text $< $@
 
 firmware_text.hex: firmware_text.img
