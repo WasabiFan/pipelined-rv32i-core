@@ -1,0 +1,12 @@
+.text
+.globl mmio_read32
+.globl mmio_write32
+
+mmio_read32:
+    lw  a0, 0(a0)
+    ret
+
+mmio_write32:
+    sw  a1, 0(a0)
+    ret
+
