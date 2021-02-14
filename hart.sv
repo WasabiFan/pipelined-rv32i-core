@@ -96,6 +96,7 @@ module hart(
 
     logic compute_is_complete;
     mem_write_control_t control_store;
+    reg_write_control_t control_reg_write;
     jump_control_t control_jump_target;
     stage_compute compute (
         .clock                  (clock),
@@ -108,7 +109,7 @@ module hart(
         .curr_instr             (current_instruction),
         .is_complete            (compute_is_complete),
         .control_store          (control_store),
-        .control_rd_out         (register_write_control),
+        .control_rd_out         (control_reg_write),
         .control_jump_target    (control_jump_target)
     );
 
@@ -130,6 +131,16 @@ module hart(
                 data_memory_w_width = control_store.width;
             end
         endcase;
+    end
+
+    always_comb begin
+        if (current_stage == STAGE_WRITEBACK) begin
+            register_write_control = control_reg_write;
+        end else begin
+            register_write_control.enable = 1'b0;
+            register_write_control.which_register = 5'bxxxxx;
+            register_write_control.value = 32'hxxxxxxxx;
+        end
     end
 
     // Control flow
