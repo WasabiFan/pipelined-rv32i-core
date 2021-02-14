@@ -26,8 +26,9 @@ module hart_tb();
         // TODO: the testbench is transpiled without the main sources included,
         // so sv2v doesn't introduce this automatically. Should consider
         // including all sources in each individual testbench.
-        ._sv2v_width_rom_init_file(15*8),
-        .rom_init_file("hart_tb_mem.hex")
+        ._sv2v_width_rom_init_file(20*8),
+        .rom_init_file("hart_tb_mem_text.hex"),
+        .ram_init_file("hart_tb_mem_data.hex")
     ) dut (
         .clock                           (clock),
         .reset                           (reset),

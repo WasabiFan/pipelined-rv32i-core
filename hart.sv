@@ -15,7 +15,8 @@ module hart(
 );
     parameter reset_vector   = 32'h00010000;
     parameter ram_start_addr = 32'h00020000;
-    parameter rom_init_file = "mem.hex";
+    parameter rom_init_file = "mem_text.hex";
+    parameter ram_init_file = "mem_data.hex";
 
     stage_t current_stage;
 
@@ -30,7 +31,7 @@ module hart(
     logic [XLEN-1:0] data_memory_addr, data_memory_w_data, data_memory_r_data;
     write_width_t data_memory_w_width;
     logic data_memory_w_enable;
-    memory #(.ram_start_addr(ram_start_addr)) data_memory (
+    memory #(.ram_start_addr(ram_start_addr), .init_file(ram_init_file)) data_memory (
         .clock                       (clock),
         .addr                        (data_memory_addr),
         .w_data                      (data_memory_w_data),

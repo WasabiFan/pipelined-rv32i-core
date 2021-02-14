@@ -7,8 +7,13 @@ module ram(
     output logic [XLEN-1:0] r_data
 );
     parameter depth = 1024;
+    parameter init_file = "mem_data.hex";
 
     reg [XLEN-1:0] memory[0:depth-1];
+
+    initial begin
+        $readmemh(init_file, memory);
+    end
 
     logic [1:0] r_addr_offset_within_word, w_addr_offset_within_word;
     logic [XLEN-1:0] addr_whole_word;

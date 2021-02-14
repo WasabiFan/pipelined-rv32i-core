@@ -2,7 +2,7 @@
 
 include ./site-config.sh
 
-all: firmware_text.hex
+all: firmware_text.hex firmware_data.hex
 
 CC=$(RISCV_PREFIX)-gcc
 AS=$(RISCV_PREFIX)-as
@@ -27,12 +27,14 @@ firmware.elf: $(SOURCE_S:.s=.o) $(SOURCE_C:.c=.o)
 	@echo $(RISCV_LIB)
 	$(LD) $(LDFLAGS) -o firmware.elf $(SOURCE_S:.s=.o) $(SOURCE_C:.c=.o) $(LDPOSTFLAGS)
 
-firmware_text.img: firmware.elf
-	# TODO: rodata is ignored
-	$(OBJCOPY) -O binary --only-section .text $< $@
+firmware.img: firmware.elf
+	$(OBJCOPY) -O binary $< $@
 
-firmware_text.hex: firmware_text.img
-	python3 img_to_hex.py $< $@
+firmware_text.hex: firmware.img
+	python3 img_to_hex.py 0x00000 0x10000 $< $@
+
+firmware_data.hex: firmware.img
+	python3 img_to_hex.py 0x10000 0x20000 $< $@
 
 clean:
-	rm -f *.o *.hex firmware.elf firmware_text.img firmware_text.hex 
+	rm -f *.o *.hex firmware.elf firmware.img firmware_text.hex firmware_data.hex 

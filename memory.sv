@@ -10,12 +10,13 @@ module memory(
 );
     parameter ram_start_addr = 32'h00020000;
     parameter ram_depth = 1024;
+    parameter init_file = "mem_data.hex";
 
     logic is_data_ram_active;
     assign is_data_ram_active = addr >= ram_start_addr && addr < (ram_start_addr + ram_depth * 4);
 
     logic [XLEN-1:0] ram_r_data;
-    ram #(.depth(ram_depth)) data_memory (
+    ram #(.depth(ram_depth), .init_file(init_file)) data_memory (
         .clock       (clock),
         // RAM cell mapped starting at the ram_start address
         .addr        (addr - ram_start_addr),
