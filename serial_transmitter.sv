@@ -1,5 +1,6 @@
 // Basic transmit-only UART module.
-// "clock" is assumed to be the 48MHz internal HFOSC.
+// "clock" by default should be 6MHz. If this is not the case, adjust
+// cycles_per_bit accordingly.
 // "tx_data" is the next byte to transmit; tx_data_available is a flag
 // indicating that the parent would like to transmit. "tx_ready" is high when
 // ready to transmit. "serial_tx" should be the output pin for the UART.
@@ -14,8 +15,8 @@ module serial_transmitter(
         output logic serial_tx
     );
 
-    // 48MHz (48000000) / 9600 
-    localparam cycles_per_bit = 5000;
+    // Default: 6MHz (6000000) / 9600 
+    localparam cycles_per_bit = 625;
 
     logic [3:0] data_shift_buffer_remaining;
     logic [9:0] data_shift_buffer;

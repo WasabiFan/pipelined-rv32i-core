@@ -19,17 +19,13 @@ module top (
 
     // TODO: see whether lower clock is necessary
     logic core_clock, serial_clock, int_osc;
-    assign serial_clock = int_osc;
-    assign core_clock = clock_div == 0;
 
-    logic [1:0] clock_div;
-    always_ff @(posedge int_osc) begin
-        clock_div <= clock_div + 1;
-    end
+    assign serial_clock = int_osc;
+    assign core_clock = int_osc;
 
     // Internal oscillator
     /* verilator lint_off PINMISSING */
-    SB_HFOSC u_SB_HFOSC (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
+    SB_HFOSC #(.CLKHF_DIV("0b11")) u_SB_HFOSC (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
     /* verilator lint_on PINMISSING */
 
     // Serial transmitter
