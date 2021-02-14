@@ -4,6 +4,8 @@ YOSYS_ROOT = $(shell dirname $(shell dirname $(shell apio raw "which yosys")))
 IVERILOG_ROOT = $(shell dirname $(shell dirname $(shell apio raw "which iverilog")))
 CELLS_SIM_PATH = $(join $(YOSYS_ROOT),/share/yosys/ice40/cells_sim.v)
 
+FIRMWARE_HEX = firmware/firmware_data.hex firmware/firmware_text.hex
+
 all: all.v verify lint build
 
 # For some features, such as packages, sv2v requires being able to process all
@@ -15,9 +17,6 @@ all.v: $(SOURCE_SV_FILES)
 verify: all.v
 	apio verify
 
-build-firmware:
-	$(MAKE) -C firmware firmware_data.hex firmware_text.hex
-
 # "apio lint" lints all.v, but it's preferrable if the linter is operating
 # on our original SV source instead.
 # Note: verilator does not work with non-synthesizable language features,
@@ -25,14 +24,31 @@ build-firmware:
 lint:
 	apio raw "verilator --lint-only --top-module top -v $(CELLS_SIM_PATH) $(SOURCE_SV_FILES)"
 
-build: all.v build-firmware
-	time apio build
 
-build-verbose: all.v build-firmware
-	apio build --verbose
+.PHONY: firmware
+firmware:
+	$(MAKE) -C firmware $(notdir $(FIRMWARE_HEX))
 
-upload: all.v build-firmware
-	apio upload
+.PHONY: bin
+build: hardware.bin
+
+hardware.json: $(FIRMWARE_HEX) all.v
+	apio raw "yosys -p \"synth_ice40 -json hardware.json\" -q all.v"
+
+hardware.asc: $(FIRMWARE_HEX) hardware.json upduino.pcf
+	apio raw "nextpnr-ice40 --up5k --package sg48 --json hardware.json --asc hardware.asc --pcf upduino.pcf -q"
+
+hardware.bin: hardware.asc
+	apio raw "icepack hardware.asc hardware.bin"
+
+# Phony target which performs the end-to-end synthesis with full debug output
+build-verbose: $(FIRMWARE_HEX) all.v
+	apio raw "yosys -p \"synth_ice40 -json hardware.json\" all.v"
+	apio raw "nextpnr-ice40 --up5k --package sg48 --json hardware.json --asc hardware.asc --pcf upduino.pcf"
+	apio raw "icepack hardware.asc hardware.bin"
+
+upload: hardware.bin
+	apio raw "iceprog -d i:0x0403:0x6014:0 hardware.bin"
 
 %_tb.v: isa_types.sv %_tb.sv
 	sv2v $^ > $@
