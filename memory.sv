@@ -10,7 +10,7 @@ module memory(
 );
     parameter ram_start_addr = 32'h00020000;
     parameter ram_depth = 1024;
-    parameter init_file = "mem_data.hex";
+    parameter init_file = "firmware/firmware_data.hex";
 
     logic is_data_ram_active;
     assign is_data_ram_active = addr >= ram_start_addr && addr < (ram_start_addr + ram_depth * 4);

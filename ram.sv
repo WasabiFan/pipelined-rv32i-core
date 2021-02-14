@@ -7,7 +7,7 @@ module ram(
     output logic [XLEN-1:0] r_data
 );
     parameter depth = 1024;
-    parameter init_file = "mem_data.hex";
+    parameter init_file = "firmware/firmware_data.hex";
 
     reg [XLEN-1:0] memory[0:depth-1];
 

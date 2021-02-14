@@ -7,7 +7,7 @@ module rom(
     // so using these doesn't actually work. Need to figure out how to pass
     // the -defer option to read_verilog command in the build.
     parameter depth = 1024;
-    parameter init_file = "mem_text.hex";
+    parameter init_file = "firmware/firmware_text.hex";
 
     reg [XLEN-1:0] memory[0:depth-1];
 

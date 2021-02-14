@@ -15,8 +15,8 @@ module hart(
 );
     parameter reset_vector   = 32'h00010000;
     parameter ram_start_addr = 32'h00020000;
-    parameter rom_init_file = "mem_text.hex";
-    parameter ram_init_file = "mem_data.hex";
+    parameter rom_init_file = "firmware/firmware_text.hex";
+    parameter ram_init_file = "firmware/firmware_data.hex";
 
     stage_t current_stage;
 

@@ -15,6 +15,9 @@ all.v: $(SOURCE_SV_FILES)
 verify: all.v
 	apio verify
 
+build-firmware:
+	$(MAKE) -C firmware firmware_data.hex firmware_text.hex
+
 # "apio lint" lints all.v, but it's preferrable if the linter is operating
 # on our original SV source instead.
 # Note: verilator does not work with non-synthesizable language features,
@@ -22,13 +25,13 @@ verify: all.v
 lint:
 	apio raw "verilator --lint-only --top-module top -v $(CELLS_SIM_PATH) $(SOURCE_SV_FILES)"
 
-build: all.v
+build: all.v build-firmware
 	time apio build
 
-build-verbose: all.v
+build-verbose: all.v build-firmware
 	apio build --verbose
 
-upload: all.v
+upload: all.v build-firmware
 	apio upload
 
 %_tb.v: isa_types.sv %_tb.sv
@@ -50,3 +53,4 @@ sim-%: %_tb.vcd
 clean:
 	apio clean
 	rm -f all.v *_tb.vcd *_tb.out *_tb.v
+	$(MAKE) -C firmware clean
