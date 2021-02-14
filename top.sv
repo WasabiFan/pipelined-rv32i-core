@@ -56,10 +56,10 @@ module top (
         if (reset) begin
             serial_tx_write_started <= 1'b0;
         end else begin
-            if (!memory_mapped_io_control.enable)
-                serial_tx_write_started <= 1'b0;
-            else if (!serial_tx_ready)
+            if (!serial_tx_ready)
                 serial_tx_write_started <= 1'b1;
+            else if (!memory_mapped_io_control.enable)
+                serial_tx_write_started <= 1'b0;
             else
                 serial_tx_write_started <= serial_tx_write_started;
         end
@@ -73,9 +73,9 @@ module top (
         if (memory_mapped_io_control.addr == 32'h00030000 && memory_mapped_io_control.width == write_byte && memory_mapped_io_control.enable) begin
             serial_tx_data = memory_mapped_io_control.value[7:0];
             serial_tx_data_available = 1'b1;
-            memory_mapped_io_write_complete = serial_tx_write_started && serial_tx_data_available;
+            memory_mapped_io_write_complete = serial_tx_write_started && serial_tx_ready;
         end
-        
+
         if (memory_mapped_io_control.addr == 32'h00030004 && memory_mapped_io_control.enable) begin
             memory_mapped_io_write_complete = 1'b1;
         end
