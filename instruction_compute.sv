@@ -72,7 +72,7 @@ module instruction_compute (
                     `FUNCT3_SLTU:   control_rd_out.value = reg_rs1_val < reg_rs2_val ? 1 : 0;
                     `FUNCT3_XOR:    control_rd_out.value = reg_rs1_val ^ reg_rs2_val;
                     `FUNCT3_SRL_SRA:
-                        if (shift_type) control_rd_out.value = signed'(reg_rs1_val ) >>> reg_rs2_val;
+                        if (shift_type) control_rd_out.value = signed'(reg_rs1_val) >>> reg_rs2_val;
                         else            control_rd_out.value = reg_rs1_val >> reg_rs2_val;
                     `FUNCT3_OR:     control_rd_out.value = reg_rs1_val | reg_rs2_val;
                     `FUNCT3_AND:    control_rd_out.value = reg_rs1_val & reg_rs2_val;
