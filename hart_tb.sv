@@ -1,9 +1,11 @@
 `timescale 1ns/1ps
 
 module hart_tb();
+    integer i;
     initial begin
         $dumpfile("hart_tb.vcd");
         $dumpvars(0,hart_tb);
+        for (i = 0; i < 1024; i += 1) $dumpvars(0, hart_tb.dut.data_memory.data_memory.memory[i]);
     end
 
     logic clock, reset;
@@ -14,7 +16,7 @@ module hart_tb();
 
     logic [XLEN-1:0] memory_mapped_io_addr;
     logic [XLEN-1:0] memory_mapped_io_value;
-    write_width_t memory_mapped_io_width;
+    mem_width_t memory_mapped_io_width;
     logic memory_mapped_io_enable;
 
     assign memory_mapped_io_addr   = memory_mapped_io_control.addr;
@@ -22,14 +24,7 @@ module hart_tb();
     assign memory_mapped_io_width  = memory_mapped_io_control.width;
     assign memory_mapped_io_enable = memory_mapped_io_control.enable;
 
-    hart #(
-        // TODO: the testbench is transpiled without the main sources included,
-        // so sv2v doesn't introduce this automatically. Should consider
-        // including all sources in each individual testbench.
-        ._sv2v_width_rom_init_file(20*8),
-        .rom_init_file("hart_tb_mem_text.hex"),
-        .ram_init_file("hart_tb_mem_data.hex")
-    ) dut (
+    hart dut (
         .clock                           (clock),
         .reset                           (reset),
         .memory_mapped_io_r_data         (memory_mapped_io_r_data),

@@ -70,7 +70,7 @@ module top (
         serial_tx_data_available = 1'b0;
         memory_mapped_io_write_complete = 1'b0;
 
-        if (memory_mapped_io_control.addr == 32'h00030000 && memory_mapped_io_control.width == write_byte && memory_mapped_io_control.enable) begin
+        if (memory_mapped_io_control.addr == 32'h00030000 && memory_mapped_io_control.width == WIDTH_BYTE && memory_mapped_io_control.enable) begin
             serial_tx_data = memory_mapped_io_control.value[7:0];
             serial_tx_data_available = 1'b1;
             memory_mapped_io_write_complete = serial_tx_write_started && serial_tx_ready;

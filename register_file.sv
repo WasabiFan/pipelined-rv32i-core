@@ -15,9 +15,14 @@ module register_file(
     logic [XLEN-1:0] xregs [0:num_regs-1];
 
     // for debugging in sim
-    // logic [XLEN-1:0] ra, sp;
-    // assign ra = xregs[1];
-    // assign sp = xregs[2];
+    // logic [XLEN-1:0] reg_x01_ra, reg_x02_sp, reg_x08_s0, reg_x10_a0, reg_x11_a1, reg_x15_a5, reg_x19_s3;
+    // assign reg_x01_ra = xregs[1];
+    // assign reg_x02_sp = xregs[2];
+    // assign reg_x08_s0 = xregs[8];
+    // assign reg_x10_a0 = xregs[10];
+    // assign reg_x11_a1 = xregs[11];
+    // assign reg_x15_a5 = xregs[15];
+    // assign reg_x19_s3 = xregs[19];
 
     always_ff @(posedge clock) begin
         if (reset) begin

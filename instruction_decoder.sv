@@ -36,8 +36,8 @@ module instruction_decoder (instr_bits, decoded_instruction);
     assign decoded_instruction.funct7 = instr_bits[31:25];
 
     logic [11:0] i_imm_raw, s_imm_raw;
-    logic [11:0] b_imm_raw;
-    logic [19:0] j_imm_raw;
+    logic [12:0] b_imm_raw;
+    logic [20:0] j_imm_raw;
     assign i_imm_raw = instr_bits[31:20];
     assign s_imm_raw = { instr_bits[31:25], instr_bits[11:7] };
     assign j_imm_raw = { instr_bits[31], instr_bits[19:12], instr_bits[20], instr_bits[30:25], instr_bits[24:21], 1'b0 };
@@ -46,6 +46,6 @@ module instruction_decoder (instr_bits, decoded_instruction);
     assign decoded_instruction.i_imm_input = `SIGEXT(i_imm_raw, 12, XLEN);
     assign decoded_instruction.s_imm_input = `SIGEXT(s_imm_raw, 12, XLEN);
     assign decoded_instruction.u_imm_input = { instr_bits[31:12], 12'b0 };
-    assign decoded_instruction.j_imm_input = `SIGEXT(j_imm_raw, 20, XLEN);
+    assign decoded_instruction.j_imm_input = `SIGEXT(j_imm_raw, 21, XLEN);
     assign decoded_instruction.b_imm_input = `SIGEXT(b_imm_raw, 12, XLEN);
 endmodule

@@ -2,17 +2,16 @@ module ram(
     input logic clock,
     input logic [XLEN-1:0] addr,
     input logic [XLEN-1:0] w_data,
-    input write_width_t w_width,
+    input mem_width_t w_width,
     input logic w_enable,
     output logic [XLEN-1:0] r_data
 );
     parameter depth = 1024;
-    parameter init_file = "firmware/firmware_data.hex";
 
     reg [XLEN-1:0] memory[0:depth-1];
 
     initial begin
-        $readmemh(init_file, memory);
+        $readmemh("firmware/firmware_data.hex", memory);
     end
 
     logic [1:0] r_addr_offset_within_word, w_addr_offset_within_word;
@@ -29,9 +28,9 @@ module ram(
     logic [3:0] w_word_byte_enable;
     always_comb begin
         case (w_width)
-            write_byte:     w_word_byte_enable = 4'b0001 << w_addr_offset_within_word;
-            write_halfword: w_word_byte_enable = 4'b0011 << w_addr_offset_within_word;
-            write_word:     w_word_byte_enable = 4'b1111;
+            WIDTH_BYTE:     w_word_byte_enable = 4'b0001 << w_addr_offset_within_word;
+            WIDTH_HALFWORD: w_word_byte_enable = 4'b0011 << w_addr_offset_within_word;
+            WIDTH_WORD:     w_word_byte_enable = 4'b1111;
             default:        w_word_byte_enable = 4'b0000; // Shouldn't happen
         endcase
     end

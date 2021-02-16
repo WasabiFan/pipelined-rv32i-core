@@ -1,8 +1,8 @@
 typedef enum {
     STAGE_INSTRUCTION_FETCH,
-    STAGE_MEMORY_LOAD,
+    STAGE_REGISTER_READ,
     STAGE_COMPUTE,
-    STAGE_MEMORY_STORE,
+    STAGE_MEMORY_TRANSACTION,
     STAGE_WRITEBACK
 } stage_t;
 
@@ -15,27 +15,19 @@ module hart(
 );
     parameter reset_vector   = 32'h00010000;
     parameter ram_start_addr = 32'h00020000;
-    parameter rom_init_file = "firmware/firmware_text.hex";
-    parameter ram_init_file = "firmware/firmware_data.hex";
 
     stage_t current_stage;
 
-    logic [ILEN-1:0] instruction_bits;
-    decoded_instruction_t current_instruction;
-
-    instruction_decoder instruction_decoder (
-        .instr_bits             (instruction_bits),
-        .decoded_instruction    (current_instruction)
-    );
-
     logic [XLEN-1:0] data_memory_addr, data_memory_w_data, data_memory_r_data;
-    write_width_t data_memory_w_width;
-    logic data_memory_w_enable;
-    memory #(.ram_start_addr(ram_start_addr), .init_file(ram_init_file)) data_memory (
+    mem_width_t data_memory_width;
+    logic data_memory_w_enable, data_memory_r_sign_extend;
+    memory #(.ram_start_addr(ram_start_addr)) data_memory (
         .clock                       (clock),
         .addr                        (data_memory_addr),
+        .r_width                     (data_memory_width),
+        .r_sign_extend               (data_memory_r_sign_extend),
         .w_data                      (data_memory_w_data),
-        .w_width                     (data_memory_w_width),
+        .w_width                     (data_memory_width),
         .w_enable                    (data_memory_w_enable),
         .memory_mapped_io_r_data     (memory_mapped_io_r_data),
         .r_data                      (data_memory_r_data),
@@ -43,15 +35,25 @@ module hart(
     );
 
     logic [XLEN-1:0] instruction_memory_addr, instruction_memory_r_data;
-    rom #(
-        .init_file(rom_init_file)
-    ) instruction_memory (
+    rom instruction_memory (
         .clock  (clock),
         // ROM is mapped starting at the reset vector
         .addr   (instruction_memory_addr - reset_vector),
         .r_data (instruction_memory_r_data)
     );
 
+    // STAGE 1: INSTRUCTION FETCH
+    logic [ILEN-1:0] instruction_bits;
+    assign instruction_memory_addr = pc;
+    assign instruction_bits = instruction_memory_r_data;
+
+    decoded_instruction_t current_instruction;
+    instruction_decoder instruction_decoder (
+        .instr_bits             (instruction_bits),
+        .decoded_instruction    (current_instruction)
+    );
+
+    // STAGE 2: REGISTER LOAD
     logic [XLEN-1:0] pc;
     reg_write_control_t register_write_control;
     logic [XLEN-1:0] register_rs1_val, register_rs2_val;
@@ -65,38 +67,10 @@ module hart(
         .rs2_val          (register_rs2_val)
     );
 
-    logic instruction_fetch_is_complete;
-    stage_instruction_fetch instruction_fetch (
-        .clock          (clock),
-        .reset          (reset),
-        .enable         (current_stage == STAGE_INSTRUCTION_FETCH),
-        .pc             (pc),
-        .mem_r_data     (instruction_memory_r_data),
-        .is_complete    (instruction_fetch_is_complete),
-        .mem_addr       (instruction_memory_addr),
-        .instr_bits     (instruction_bits)
-    );
-
-    // TODO: below computation is duplicated in instruction_compute
-    logic [XLEN-1:0] current_instruction_i_effective_addr;
-    assign current_instruction_i_effective_addr = current_instruction.i_imm_input + register_rs1_val;
-
-    logic memory_load_is_complete;
-    logic [XLEN-1:0] memory_load_data_addr, memory_load_loaded_value;
-    stage_memory_load memory_load (
-        .clock               (clock),
-        .reset               (reset),
-        .enable              (current_stage == STAGE_MEMORY_LOAD),
-        .i_effective_addr    (current_instruction_i_effective_addr),
-        .mem_r_data          (data_memory_r_data),
-        .is_complete         (memory_load_is_complete),
-        .mem_addr            (memory_load_data_addr),
-        .loaded_value        (memory_load_loaded_value)
-    );
-
-    logic compute_is_complete;
-    mem_write_control_t control_store;
-    reg_write_control_t control_reg_write;
+    // STAGE 3: COMPUTE
+    logic [XLEN-1:0] compute_result;
+    compute_mem_control_t control_mem;
+    compute_reg_control_t control_reg_write;
     jump_control_t control_jump_target;
     stage_compute compute (
         .clock                  (clock),
@@ -104,43 +78,30 @@ module hart(
         .enable                 (current_stage == STAGE_COMPUTE),
         .reg_rs1_val            (register_rs1_val),
         .reg_rs2_val            (register_rs2_val),
-        .mem_load_val           (memory_load_loaded_value),
         .pc                     (pc),
         .curr_instr             (current_instruction),
-        .is_complete            (compute_is_complete),
-        .control_store          (control_store),
+        .result                 (compute_result),
+        .control_mem            (control_mem),
         .control_rd_out         (control_reg_write),
         .control_jump_target    (control_jump_target)
     );
 
-    // Data memory controller (mux)
-    always_comb begin
-        data_memory_w_enable = 1'b0;
-        data_memory_addr = 'x;
-        data_memory_w_data = 'x;
-        data_memory_w_width = write_word; // don't care
+    // STAGE 4: MEMORY TRANSACTION
+    assign data_memory_w_enable      = control_mem.w_enable && current_stage == STAGE_MEMORY_TRANSACTION;
+    assign data_memory_addr          = current_stage == STAGE_MEMORY_TRANSACTION ? compute_result : 'x;
+    assign data_memory_width         = control_mem.width;
+    assign data_memory_r_sign_extend = control_mem.r_sign_extend;
+    assign data_memory_w_data        = control_mem.w_value;
 
-        case (current_stage)
-            STAGE_MEMORY_LOAD: begin
-                data_memory_addr = memory_load_data_addr;
-            end
-            STAGE_MEMORY_STORE: begin
-                data_memory_addr = control_store.addr;
-                data_memory_w_enable = control_store.enable;
-                data_memory_w_data = control_store.value;
-                data_memory_w_width = control_store.width;
-            end
-        endcase;
-    end
-
+    // STAGE 5: WRITEBACK
     always_comb begin
-        if (current_stage == STAGE_WRITEBACK) begin
-            register_write_control = control_reg_write;
-        end else begin
-            register_write_control.enable = 1'b0;
-            register_write_control.which_register = 5'bxxxxx;
-            register_write_control.value = 32'hxxxxxxxx;
-        end
+        register_write_control.which_register = control_reg_write.which_register;
+        register_write_control.enable         = control_reg_write.enable && current_stage == STAGE_WRITEBACK;
+        case (control_reg_write.source)
+            REG_WRITE_FROM_COMPUTE: register_write_control.value = compute_result;
+            REG_WRITE_FROM_MEMORY:  register_write_control.value = data_memory_r_data;
+            default:                register_write_control.value = 'x;
+        endcase
     end
 
     // Control flow
@@ -158,23 +119,22 @@ module hart(
     always_comb begin
         case (current_stage)
             STAGE_INSTRUCTION_FETCH: begin
-                current_stage_is_complete = instruction_fetch_is_complete;
-                next_stage = STAGE_MEMORY_LOAD;
+                current_stage_is_complete = 1'b1;
+                next_stage = STAGE_REGISTER_READ;
             end
-            STAGE_MEMORY_LOAD:       begin
-                current_stage_is_complete = memory_load_is_complete;
+            STAGE_REGISTER_READ: begin
+                current_stage_is_complete = 1'b1;
                 next_stage = STAGE_COMPUTE;
             end
-            STAGE_COMPUTE:           begin
-                // TODO: the below assignment was misbehaving (???), should troubleshoot
-                current_stage_is_complete = 1'b1;// compute_is_complete;
-                next_stage = STAGE_MEMORY_STORE;
+            STAGE_COMPUTE: begin
+                current_stage_is_complete = 1'b1;
+                next_stage = STAGE_MEMORY_TRANSACTION;
             end
-            STAGE_MEMORY_STORE:      begin
+            STAGE_MEMORY_TRANSACTION: begin
                 current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
                 next_stage = STAGE_WRITEBACK;
             end
-            STAGE_WRITEBACK:         begin
+            STAGE_WRITEBACK: begin
                 current_stage_is_complete = 1'b1;
                 next_stage = STAGE_INSTRUCTION_FETCH;
             end

@@ -7,12 +7,11 @@ module rom(
     // so using these doesn't actually work. Need to figure out how to pass
     // the -defer option to read_verilog command in the build.
     parameter depth = 1024;
-    parameter init_file = "firmware/firmware_text.hex";
 
     reg [XLEN-1:0] memory[0:depth-1];
 
     initial begin
-        $readmemh(init_file, memory);
+        $readmemh("firmware/firmware_text.hex", memory);
     end
 
     logic [1:0] addr_offset_within_word;

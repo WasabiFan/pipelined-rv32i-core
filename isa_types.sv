@@ -4,10 +4,10 @@
 `define ISA_TYPES_SV
 
 typedef enum {
-    write_byte,
-    write_halfword,
-    write_word
-} write_width_t;
+    WIDTH_BYTE,
+    WIDTH_HALFWORD,
+    WIDTH_WORD
+} mem_width_t;
 
 typedef logic [4:0] rv_reg_t;
 
@@ -23,6 +23,26 @@ typedef enum {
     OPCODE_LOAD,
     OPCODE_STORE
 } opcode_t;
+
+typedef enum {
+    ALU_INVALID,
+    ALU_ADD,
+    ALU_SUB,
+    ALU_XOR,
+    ALU_OR,
+    ALU_AND,
+    ALU_SHIFT_LEFT,
+    ALU_SHIFT_RIGHT_LOGICAL,
+    ALU_SHIFT_RIGHT_ARITHMETIC,
+    // equality/inequality comparison could logically be done via subtraction,
+    // but explicit options are clearer.
+    ALU_COMPARE_EQUAL,
+    ALU_COMPARE_NOT_EQUAL,
+    ALU_COMPARE_LESS_SIGNED,
+    ALU_COMPARE_LESS_UNSIGNED,
+    ALU_COMPARE_GREATER_OR_EQUAL_SIGNED,
+    ALU_COMPARE_GREATER_OR_EQUAL_UNSIGNED
+} alu_op_t;
 
 typedef struct packed {
     opcode_t opcode;
@@ -40,7 +60,7 @@ typedef struct packed {
 typedef struct packed {
     logic [XLEN-1:0] addr;
     logic [XLEN-1:0] value;
-    write_width_t width;
+    mem_width_t width;
     logic enable;
 } mem_write_control_t;
 
@@ -49,5 +69,16 @@ typedef struct packed {
     logic [XLEN-1:0] value;
     logic enable;
 } reg_write_control_t;
+
+typedef struct packed {
+    logic [XLEN-1:0] addr;
+    mem_width_t width;
+    logic enable;
+} mem_write_hint_t;
+
+typedef struct packed {
+    rv_reg_t which_register;
+    logic enable;
+} reg_write_hint_t;
 
 `endif
