@@ -70,15 +70,4 @@ typedef struct packed {
     logic enable;
 } reg_write_control_t;
 
-typedef struct packed {
-    logic [XLEN-1:0] addr;
-    mem_width_t width;
-    logic enable;
-} mem_write_hint_t;
-
-typedef struct packed {
-    rv_reg_t which_register;
-    logic enable;
-} reg_write_hint_t;
-
 `endif
