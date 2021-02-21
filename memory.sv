@@ -27,25 +27,27 @@ module memory(
         .r_data      (ram_r_data)
     );
 
-    logic r_is_data_ram_active;
+    logic r_is_data_ram_active, stored_r_sign_extend;
+    mem_width_t stored_r_width;
     always_ff @(posedge clock) begin
         r_is_data_ram_active <= w_is_data_ram_active;
+        stored_r_sign_extend <= r_sign_extend;
+        stored_r_width       <= r_width;
     end
 
     logic [XLEN-1:0] r_data_unextended;
-    // TODO: remove this?
     assign r_data_unextended = r_is_data_ram_active ? ram_r_data : memory_mapped_io_r_data;
 
     always_comb begin
-        if (r_sign_extend) begin
-            case (r_width)
+        if (stored_r_sign_extend) begin
+            case (stored_r_width)
                 WIDTH_BYTE:     r_data = `SIGEXT( r_data_unextended, 8,  XLEN );
                 WIDTH_HALFWORD: r_data = `SIGEXT( r_data_unextended, 16, XLEN );
                 WIDTH_WORD:     r_data =          r_data_unextended;
                 default:        r_data = 'x;
             endcase
         end else begin
-            case (r_width)
+            case (stored_r_width)
                 WIDTH_BYTE:     r_data = `ZEXT( r_data_unextended, 8,  XLEN );
                 WIDTH_HALFWORD: r_data = `ZEXT( r_data_unextended, 16, XLEN );
                 WIDTH_WORD:     r_data =        r_data_unextended;

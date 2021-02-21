@@ -57,9 +57,6 @@ module hart(
         .memory_mapped_io_control    (memory_mapped_io_control)
     );
 
-    // TODO: mmio pauses:
-    // current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
-
     logic [XLEN-1:0] instruction_memory_addr, instruction_memory_r_data;
     rom instruction_memory (
         .clock  (clock),
@@ -67,6 +64,11 @@ module hart(
         .addr   (instruction_memory_addr - reset_vector),
         .r_data (instruction_memory_r_data)
     );
+
+    logic frontend_is_stalled = stage_3_compute_closure.valid && (!stage_3_compute_register_rs1_has_value || !stage_3_compute_register_rs2_has_value);
+
+    // TODO: mmio pauses:
+    // current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
 
     // PC gen + control flow
     // Note: depends on stage 3 (compute) result
@@ -76,6 +78,8 @@ module hart(
     always_comb begin
         if (stage_3_compute_control_jump_target.enable)
             next_pc = stage_3_compute_control_jump_target.target_addr;
+        else if (frontend_is_stalled)
+            next_pc = stage_1_instruction_fetch_closure.pc;
         else
             next_pc = stage_1_instruction_fetch_closure.pc + 4;
     end
@@ -121,6 +125,9 @@ module hart(
         if (reset) begin
             stage_2_register_read_closure.valid               <= 1'b0;
             stage_2_register_read_closure.pc                  <= 'x;
+        end else if (frontend_is_stalled) begin
+            stage_2_register_read_closure.valid               <= stage_2_register_read_closure.valid;
+            stage_2_register_read_closure.pc                  <= stage_2_register_read_closure.pc;
         end else begin
             stage_2_register_read_closure.valid               <= stage_1_instruction_fetch_closure.valid && !is_jumping;
             stage_2_register_read_closure.pc                  <= stage_1_instruction_fetch_closure.pc;
@@ -177,6 +184,10 @@ module hart(
             stage_3_compute_closure.valid               <= 1'b0;
             stage_3_compute_closure.pc                  <= 'x;
             stage_3_compute_closure.current_instruction <= 'x;
+        end else if (frontend_is_stalled) begin
+            stage_3_compute_closure.valid               <= stage_3_compute_closure.valid;
+            stage_3_compute_closure.pc                  <= stage_3_compute_closure.pc;
+            stage_3_compute_closure.current_instruction <= stage_3_compute_closure.current_instruction;
         end else begin
             stage_3_compute_closure.valid               <= stage_2_register_read_closure.valid && !is_jumping && stage_2_register_read_current_instruction.opcode != OPCODE_UNKNOWN;
             stage_3_compute_closure.pc                  <= stage_2_register_read_closure.pc;
@@ -222,9 +233,6 @@ module hart(
         .operand_value                                  (stage_3_compute_register_rs2_val)
     );
 
-    // TODO: check stage_3_compute_register_rs*_has_value and propagate validity accordingly
-    // Need to figure out how to block earlier stages from ingesting a new instruction
-
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_3_compute_closure_pc                       = stage_3_compute_closure.pc;
     logic dbg_stage_3_compute_closure_valid                               = stage_3_compute_closure.valid;
@@ -262,7 +270,7 @@ module hart(
     // - data_memory_r_data
     memory_transaction_closure_t stage_4_memory_transaction_closure;
     always_ff @(posedge clock) begin
-        if (reset) begin
+        if (reset || frontend_is_stalled) begin
             stage_4_memory_transaction_closure.valid               <= 1'b0;
             stage_4_memory_transaction_closure.pc                  <= 'x;
             stage_4_memory_transaction_closure.compute_result      <= 'x;
