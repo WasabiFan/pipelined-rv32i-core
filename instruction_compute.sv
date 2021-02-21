@@ -220,6 +220,7 @@ module instruction_compute (
             end
 
             OPCODE_UNKNOWN: begin /* Do nothing */ end
+            default:        begin /* Do nothing */ end
         endcase
     end
 endmodule
