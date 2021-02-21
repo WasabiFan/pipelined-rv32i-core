@@ -14,8 +14,11 @@ all: all.v verify lint build
 all.v: $(SOURCE_SV_FILES)
 	sv2v $^ > $@
 
+all_sim.v: $(SOURCE_SV_FILES)
+	sv2v $^ -D SIMULATION > $@
+
 verify: all.v
-	apio verify
+	apio raw "iverilog -B \"$(IVERILOG_ROOT)/lib/ivl\" -o hardware.out -D VCD_OUTPUT= $(CELLS_SIM_PATH) all.v"
 
 # "apio lint" lints all.v, but it's preferrable if the linter is operating
 # on our original SV source instead.
@@ -55,8 +58,8 @@ upload: hardware.bin
 
 # Apio only supports one testbench (it adds all *_tb.v files at once); the below
 # is an expansion of their original rules, with support for multiple testbenches.
-%_tb.out: all.v %_tb.v
-	apio raw "iverilog -B \"$(IVERILOG_ROOT)/lib/ivl\" -o $@ -D VCD_OUTPUT=$(basename $@) $(CELLS_SIM_PATH) $^"
+%_tb.out: all_sim.v %_tb.v
+	apio raw "iverilog -B \"$(IVERILOG_ROOT)/lib/ivl\" -o $@ -D VCD_OUTPUT=$(basename $@) -D SIMULATION $(CELLS_SIM_PATH) $^"
 
 %_tb.vcd: %_tb.out
 	apio raw "vvp -M \"$(IVERILOG_ROOT)/lib/ivl\" $<"
@@ -68,5 +71,5 @@ sim-%: %_tb.vcd
 
 clean:
 	apio clean
-	rm -f all.v *_tb.vcd *_tb.out *_tb.v
+	rm -f all.v all_sim.v *_tb.vcd *_tb.out *_tb.v
 	$(MAKE) -C firmware clean
