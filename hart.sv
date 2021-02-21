@@ -93,13 +93,9 @@ module hart(
             next_pc = stage_1_instruction_fetch_closure.pc + 4;
     end
 
+    // =================================
     // STAGE 1: INSTRUCTION FETCH
-    // Needs:
-    // - Current PC
-    // Propagates:
-    // - Current PC
-    // Outputs:
-    // - current_instruction (decoded struct)
+    // =================================
     instruction_fetch_closure_t stage_1_instruction_fetch_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -120,15 +116,9 @@ module hart(
     logic [ILEN-1:0] stage_1_instruction_fetch_instruction_bits;
     assign stage_1_instruction_fetch_instruction_bits = instruction_memory_r_data;
 
+    // =================================
     // STAGE 2: REGISTER LOAD
-    // Needs:
-    // - current_instruction
-    // Propagates:
-    // - current_instruction
-    // - Current PC
-    // Outputs:
-    // - register_write_control
-    // - register_rs1_val / register_rs2_val
+    // =================================
     register_read_closure_t stage_2_register_read_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -185,18 +175,9 @@ module hart(
     logic dbg_register_write_control_enable            = register_write_control.enable;
     `endif
 
+    // =================================
     // STAGE 3: COMPUTE
-    // Needs:
-    // - register_rs1_val / register_rs2_val
-    // - Current PC
-    // - current_instruction
-    // Propagates:
-    // - Current PC
-    // Outputs:
-    // - compute_result
-    // - control_mem
-    // - control_reg_write
-    // - control_jump_target
+    // =================================
     compute_closure_t stage_3_compute_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
@@ -289,16 +270,9 @@ module hart(
         .control_jump_target    (stage_3_compute_control_jump_target)
     );
 
+    // =================================
     // STAGE 4: MEMORY TRANSACTION
-    // Needs:
-    // - control_mem
-    // - compute_result
-    // Propagates:
-    // - control_reg_write
-    // - compute_result
-    // Outputs:
-    // - completion indicator
-    // - data_memory_r_data
+    // =================================
     memory_transaction_closure_t stage_4_memory_transaction_closure;
     always_ff @(posedge clock) begin
         if (reset || frontend_is_stalled) begin
@@ -327,13 +301,9 @@ module hart(
     assign data_memory_r_sign_extend = stage_4_memory_transaction_closure.control_mem.r_sign_extend;
     assign data_memory_w_data        = stage_4_memory_transaction_closure.control_mem.w_value;
 
+    // =================================
     // STAGE 5: WRITEBACK
-    // Needs:
-    // - control_reg_write
-    // - compute_result
-    // - data_memory_r_data
-    // Outputs:
-    // - register_write_control
+    // =================================
     writeback_closure_t stage_5_writeback_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
