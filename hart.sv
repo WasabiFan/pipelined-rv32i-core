@@ -1,3 +1,5 @@
+`include "sim_utils.sv"
+
 typedef struct packed {
     logic valid;
     logic [XLEN-1:0] pc;
@@ -57,6 +59,13 @@ module hart(
         .memory_mapped_io_control    (memory_mapped_io_control)
     );
 
+    `ifdef SIMULATION
+    logic [XLEN-1:0] dbg_memory_mapped_io_control_addr = memory_mapped_io_control.addr;
+    logic [XLEN-1:0] dbg_memory_mapped_io_control_value = memory_mapped_io_control.value;
+    mem_width_t dbg_memory_mapped_io_control_width = memory_mapped_io_control.width;
+    logic dbg_memory_mapped_io_control_enable = memory_mapped_io_control.enable;
+    `endif
+
     logic [XLEN-1:0] instruction_memory_addr, instruction_memory_r_data;
     rom instruction_memory (
         .clock  (clock),
@@ -74,7 +83,7 @@ module hart(
     // Note: depends on stage 3 (compute) result
     logic [XLEN-1:0] next_pc;
     logic is_jumping;
-    assign is_jumping = !reset && stage_3_compute_control_jump_target.enable;
+    assign is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
     always_comb begin
         if (stage_3_compute_control_jump_target.enable)
             next_pc = stage_3_compute_control_jump_target.target_addr;
@@ -141,6 +150,8 @@ module hart(
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_2_register_read_closure_pc = stage_2_register_read_closure.pc;
     logic dbg_stage_2_register_read_closure_valid         = stage_2_register_read_closure.valid;
+
+    `DECODED_INSTRUCTION_DEBUG_EXPANSION(stage_2_register_read_current_instruction, dbg_stage_2_register_read_current_instruction)
     `endif
 
     decoded_instruction_t stage_2_register_read_current_instruction;
