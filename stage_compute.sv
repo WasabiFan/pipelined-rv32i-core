@@ -2,8 +2,6 @@
 `include "isa_types.sv"
 
 module stage_compute (
-    input logic clock,
-    input logic reset,
     input logic enable,
     input logic [XLEN-1:0] reg_rs1_val,
     input logic [XLEN-1:0] reg_rs2_val,
@@ -31,32 +29,27 @@ module stage_compute (
         .control_jump_target    (next_control_jump_target)
     );
 
-    always_ff @(posedge clock) begin
-        if (reset) begin
-            control_rd_out.enable      <= 1'b0;
-            control_mem.w_enable       <= 1'b0;
-            control_jump_target.enable <= 1'b0;
-
-            control_rd_out.which_register <= 'x;
-            control_rd_out.source         <= REG_WRITE_FROM_COMPUTE;
-
-            control_mem.width         <= WIDTH_WORD; // don't care
-            control_mem.r_sign_extend <= 1'bx;
-            control_mem.w_value       <= 'x;
-
-            control_jump_target.target_addr <= 'x;
-
-            result <= 'x;
-        end else if (enable) begin
-            control_rd_out           <= next_control_rd_out;
-            control_mem              <= next_control_mem;
-            control_jump_target      <= next_control_jump_target;
-            result                   <= next_result;
+    always_comb begin
+        if (enable) begin
+            control_rd_out      = next_control_rd_out;
+            control_mem         = next_control_mem;
+            control_jump_target = next_control_jump_target;
+            result              = next_result;
         end else begin
-            control_rd_out           <= control_rd_out;
-            control_mem              <= control_mem;
-            control_jump_target      <= control_jump_target;
-            result                   <= result;
+            control_rd_out.enable      = 1'b0;
+            control_mem.w_enable       = 1'b0;
+            control_jump_target.enable = 1'b0;
+
+            control_rd_out.which_register = 'x;
+            control_rd_out.source         = REG_WRITE_FROM_COMPUTE;
+
+            control_mem.width         = WIDTH_WORD; // don't care
+            control_mem.r_sign_extend = 1'bx;
+            control_mem.w_value       = 'x;
+
+            control_jump_target.target_addr = 'x;
+
+            result = 'x;
         end
     end
 endmodule;
