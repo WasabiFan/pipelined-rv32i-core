@@ -3,7 +3,7 @@
 `ifndef ISA_TYPES_SV
 `define ISA_TYPES_SV
 
-typedef enum {
+typedef enum logic [1:0] {
     WIDTH_BYTE,
     WIDTH_HALFWORD,
     WIDTH_WORD
@@ -11,7 +11,7 @@ typedef enum {
 
 typedef logic [4:0] rv_reg_t;
 
-typedef enum {
+typedef enum logic [3:0] {
     OPCODE_UNKNOWN,
     OPCODE_LUI,
     OPCODE_AUIPC,
@@ -24,7 +24,7 @@ typedef enum {
     OPCODE_STORE
 } opcode_t;
 
-typedef enum {
+typedef enum logic [4:0] {
     ALU_INVALID,
     ALU_ADD,
     ALU_SUB,

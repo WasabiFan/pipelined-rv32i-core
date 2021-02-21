@@ -8,7 +8,7 @@ typedef struct packed {
     logic [XLEN-1:0] w_value;
 } compute_mem_control_t;
 
-typedef enum {
+typedef enum logic {
     REG_WRITE_FROM_COMPUTE,
     REG_WRITE_FROM_MEMORY
 } red_write_source_t;
