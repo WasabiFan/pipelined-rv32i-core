@@ -68,7 +68,17 @@ module hart(
         .r_data (instruction_memory_r_data)
     );
 
+    // PC gen + control flow
+    // Note: depends on stage 3 (compute) result
     logic [XLEN-1:0] next_pc;
+    logic is_jumping;
+    assign is_jumping = !reset && stage_3_compute_control_jump_target.enable;
+    always_comb begin
+        if (stage_3_compute_control_jump_target.enable)
+            next_pc = stage_3_compute_control_jump_target.target_addr;
+        else
+            next_pc = stage_1_instruction_fetch_closure.pc + 4;
+    end
 
     // STAGE 1: INSTRUCTION FETCH
     // Needs:
@@ -97,12 +107,6 @@ module hart(
     logic [ILEN-1:0] stage_1_instruction_fetch_instruction_bits;
     assign stage_1_instruction_fetch_instruction_bits = instruction_memory_r_data;
 
-    decoded_instruction_t stage_1_instruction_fetch_current_instruction;
-    instruction_decoder instruction_decoder (
-        .instr_bits             (stage_1_instruction_fetch_instruction_bits),
-        .decoded_instruction    (stage_1_instruction_fetch_current_instruction)
-    );
-
     // STAGE 2: REGISTER LOAD
     // Needs:
     // - current_instruction
@@ -123,14 +127,20 @@ module hart(
         end
     end
 
-    // Memory reads are synchronous, so we can't capture the instruction value as part of our closure
-    decoded_instruction_t stage_2_register_read_current_instruction;
-    assign stage_2_register_read_current_instruction = stage_1_instruction_fetch_current_instruction;
+    // Memory reads are synchronous, so we can't capture the instruction bits as part of our closure
+    logic [XLEN-1:0] stage_2_register_read_instruction_bits;
+    assign stage_2_register_read_instruction_bits = stage_1_instruction_fetch_instruction_bits;
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_2_register_read_closure_pc = stage_2_register_read_closure.pc;
     logic dbg_stage_2_register_read_closure_valid         = stage_2_register_read_closure.valid;
     `endif
+
+    decoded_instruction_t stage_2_register_read_current_instruction;
+    instruction_decoder instruction_decoder (
+        .instr_bits             (stage_2_register_read_instruction_bits),
+        .decoded_instruction    (stage_2_register_read_current_instruction)
+    );
 
     reg_write_control_t register_write_control;
     logic [XLEN-1:0] stage_2_register_read_register_rs1_val, stage_2_register_read_register_rs2_val;
@@ -288,16 +298,5 @@ module hart(
             REG_WRITE_FROM_MEMORY:  register_write_control.value = stage_5_writeback_memory_r_data;
             default:                register_write_control.value = 'x;
         endcase
-    end
-
-    // PC gen + control flow
-    // Note: depends on stage 3 (compute) result
-    logic is_jumping;
-    assign is_jumping = !reset && stage_3_compute_control_jump_target.enable;
-    always_comb begin
-        if (stage_3_compute_control_jump_target.enable)
-            next_pc = stage_3_compute_control_jump_target.target_addr;
-        else
-            next_pc = stage_1_instruction_fetch_closure.pc + 4;
     end
 endmodule;
