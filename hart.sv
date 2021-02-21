@@ -85,10 +85,10 @@ module hart(
     logic is_jumping;
     assign is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
     always_comb begin
-        if (stage_3_compute_control_jump_target.enable)
-            next_pc = stage_3_compute_control_jump_target.target_addr;
-        else if (frontend_is_stalled)
+        if (frontend_is_stalled)
             next_pc = stage_1_instruction_fetch_closure.pc;
+        else if (stage_3_compute_control_jump_target.enable)
+            next_pc = stage_3_compute_control_jump_target.target_addr;
         else
             next_pc = stage_1_instruction_fetch_closure.pc + 4;
     end
@@ -144,8 +144,16 @@ module hart(
     end
 
     // Memory reads are synchronous, so we can't capture the instruction bits as part of our closure
+    // This "latch" is normally just a continuous assignment "output = input", but will retain the old
+    // value if we stall.
     logic [XLEN-1:0] stage_2_register_read_instruction_bits;
-    assign stage_2_register_read_instruction_bits = stage_1_instruction_fetch_instruction_bits;
+    latch stage_2_register_read_instruction_bits_latch (
+        .clock         (clock),
+        .reset         (reset),
+        .input_value   (stage_1_instruction_fetch_instruction_bits),
+        .update        (!frontend_is_stalled),
+        .output_value  (stage_2_register_read_instruction_bits)
+    );
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_2_register_read_closure_pc = stage_2_register_read_closure.pc;
@@ -209,8 +217,20 @@ module hart(
     // Regfile reads are synchronous, so we can't capture the register values as part of our closure
     logic [XLEN-1:0] stage_3_compute_unforwarded_register_rs1_val;
     logic [XLEN-1:0] stage_3_compute_unforwarded_register_rs2_val;
-    assign stage_3_compute_unforwarded_register_rs1_val = stage_2_register_read_register_rs1_val;
-    assign stage_3_compute_unforwarded_register_rs2_val = stage_2_register_read_register_rs2_val;
+    latch stage_3_compute_unforwarded_register_rs1_val_latch (
+        .clock         (clock),
+        .reset         (reset),
+        .input_value   (stage_2_register_read_register_rs1_val),
+        .update        (!frontend_is_stalled),
+        .output_value  (stage_3_compute_unforwarded_register_rs1_val)
+    );
+    latch stage_3_compute_unforwarded_register_rs2_val_latch (
+        .clock         (clock),
+        .reset         (reset),
+        .input_value   (stage_2_register_read_register_rs2_val),
+        .update        (!frontend_is_stalled),
+        .output_value  (stage_3_compute_unforwarded_register_rs2_val)
+    );
 
     logic [XLEN-1:0] stage_3_compute_register_rs1_val;
     logic stage_3_compute_register_rs1_has_value;
