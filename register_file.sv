@@ -39,8 +39,9 @@ module register_file(
                 xregs <= xregs;
             end
 
-            rs1_val <= xregs[rs1];
-            rs2_val <= xregs[rs2];
+            // Note: blocking assignment used to avoid separate writeback hazard handling
+            rs1_val = xregs[rs1];
+            rs2_val = xregs[rs2];
         end
     end
 
