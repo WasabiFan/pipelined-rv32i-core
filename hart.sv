@@ -6,15 +6,12 @@ typedef struct packed {
 typedef struct packed {
     logic valid;
     logic [XLEN-1:0] pc;
-    decoded_instruction_t current_instruction;
 } register_read_closure_t;
 
 typedef struct packed {
     logic valid;
     logic [XLEN-1:0] pc;
     decoded_instruction_t current_instruction;
-    logic [XLEN-1:0] register_rs1_val;
-    logic [XLEN-1:0] register_rs2_val;
 } compute_closure_t;
 
 typedef struct packed {
@@ -32,7 +29,6 @@ typedef struct packed {
     logic [XLEN-1:0] pc;
     logic [XLEN-1:0] compute_result;
     compute_reg_control_t control_reg_write;
-    logic [XLEN-1:0] memory_r_data;
 } writeback_closure_t;
 
 module hart(
@@ -85,7 +81,7 @@ module hart(
     always_ff @(posedge clock) begin
         if (reset) begin
             stage_1_instruction_fetch_closure.pc    <= reset_vector;
-            stage_1_instruction_fetch_closure.valid <= 1'b0;
+            stage_1_instruction_fetch_closure.valid <= 1'b1;
         end else begin
             stage_1_instruction_fetch_closure.pc    <= next_pc;
             stage_1_instruction_fetch_closure.valid <= 1'b1;
@@ -121,13 +117,15 @@ module hart(
         if (reset) begin
             stage_2_register_read_closure.valid               <= 1'b0;
             stage_2_register_read_closure.pc                  <= 'x;
-            stage_2_register_read_closure.current_instruction <= 'x;
         end else begin
-            stage_2_register_read_closure.valid               <= stage_1_instruction_fetch_closure.valid && !is_jumping && stage_1_instruction_fetch_current_instruction.opcode != OPCODE_UNKNOWN;
+            stage_2_register_read_closure.valid               <= stage_1_instruction_fetch_closure.valid && !is_jumping;
             stage_2_register_read_closure.pc                  <= stage_1_instruction_fetch_closure.pc;
-            stage_2_register_read_closure.current_instruction <= stage_1_instruction_fetch_current_instruction;
         end
     end
+
+    // Memory reads are synchronous, so we can't capture the instruction value as part of our closure
+    decoded_instruction_t stage_2_register_read_current_instruction;
+    assign stage_2_register_read_current_instruction = stage_1_instruction_fetch_current_instruction;
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_2_register_read_closure_pc = stage_2_register_read_closure.pc;
@@ -139,8 +137,8 @@ module hart(
     register_file regfile (
         .clock            (clock),
         .reset            (reset),
-        .rs1              (stage_2_register_read_closure.current_instruction.rs1),
-        .rs2              (stage_2_register_read_closure.current_instruction.rs2),
+        .rs1              (stage_2_register_read_current_instruction.rs1),
+        .rs2              (stage_2_register_read_current_instruction.rs2),
         .write_control    (register_write_control),
         .rs1_val          (stage_2_register_read_register_rs1_val),
         .rs2_val          (stage_2_register_read_register_rs2_val)
@@ -169,23 +167,23 @@ module hart(
             stage_3_compute_closure.valid               <= 1'b0;
             stage_3_compute_closure.pc                  <= 'x;
             stage_3_compute_closure.current_instruction <= 'x;
-            stage_3_compute_closure.register_rs1_val    <= 'x;
-            stage_3_compute_closure.register_rs2_val    <= 'x;
         end else begin
-            stage_3_compute_closure.valid               <= stage_2_register_read_closure.valid && !is_jumping;
+            stage_3_compute_closure.valid               <= stage_2_register_read_closure.valid && !is_jumping && stage_2_register_read_current_instruction.opcode != OPCODE_UNKNOWN;
             stage_3_compute_closure.pc                  <= stage_2_register_read_closure.pc;
-            stage_3_compute_closure.current_instruction <= stage_2_register_read_closure.current_instruction;
-            stage_3_compute_closure.register_rs1_val    <= stage_2_register_read_register_rs1_val;
-            stage_3_compute_closure.register_rs2_val    <= stage_2_register_read_register_rs2_val;
+            stage_3_compute_closure.current_instruction <= stage_2_register_read_current_instruction;
         end
     end
+
+    // Regfile reads are synchronous, so we can't capture the register values as part of our closure
+    logic [XLEN-1:0] stage_3_compute_register_rs1_val;
+    logic [XLEN-1:0] stage_3_compute_register_rs2_val;
+    assign stage_3_compute_register_rs1_val = stage_2_register_read_register_rs1_val;
+    assign stage_3_compute_register_rs2_val = stage_2_register_read_register_rs2_val;
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_3_compute_closure_pc                       = stage_3_compute_closure.pc;
     logic dbg_stage_3_compute_closure_valid                               = stage_3_compute_closure.valid;
     decoded_instruction_t dbg_stage_3_compute_closure_current_instruction = stage_3_compute_closure.current_instruction;
-    logic [XLEN-1:0] dbg_stage_3_compute_closure_register_rs1_val         = stage_3_compute_closure.register_rs1_val;
-    logic [XLEN-1:0] dbg_stage_3_compute_closure_register_rs2_val         = stage_3_compute_closure.register_rs2_val;
 
     logic dbg_stage_3_compute_control_jump_target_enable          = stage_3_compute_control_jump_target.enable;
     logic [XLEN-1:0] dbg_stage_3_compute_control_jump_target_addr = stage_3_compute_control_jump_target.target_addr;
@@ -197,8 +195,8 @@ module hart(
     jump_control_t stage_3_compute_control_jump_target;
     stage_compute compute (
         .enable                 (stage_3_compute_closure.valid),
-        .reg_rs1_val            (stage_3_compute_closure.register_rs1_val),
-        .reg_rs2_val            (stage_3_compute_closure.register_rs2_val),
+        .reg_rs1_val            (stage_3_compute_register_rs1_val),
+        .reg_rs2_val            (stage_3_compute_register_rs2_val),
         .pc                     (stage_3_compute_closure.pc),
         .curr_instr             (stage_3_compute_closure.current_instruction),
         .result                 (stage_3_compute_compute_result),
@@ -259,15 +257,17 @@ module hart(
             stage_5_writeback_closure.pc                  <= 'x;
             stage_5_writeback_closure.control_reg_write   <= 'x;
             stage_5_writeback_closure.compute_result      <= 'x;
-            stage_5_writeback_closure.memory_r_data       <= 'x;
         end else begin
             stage_5_writeback_closure.valid               <= stage_4_memory_transaction_closure.valid;
             stage_5_writeback_closure.pc                  <= stage_4_memory_transaction_closure.pc;
             stage_5_writeback_closure.control_reg_write   <= stage_4_memory_transaction_closure.control_reg_write;
             stage_5_writeback_closure.compute_result      <= stage_4_memory_transaction_closure.compute_result;
-            stage_5_writeback_closure.memory_r_data       <= data_memory_r_data;
         end
     end
+
+    // Memory reads are synchronous, so we can't capture the memory values as part of our closure
+    logic [XLEN-1:0] stage_5_writeback_memory_r_data;
+    assign stage_5_writeback_memory_r_data = data_memory_r_data;
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_5_writeback_closure_pc = stage_5_writeback_closure.pc;
@@ -285,7 +285,7 @@ module hart(
         register_write_control.enable         = stage_5_writeback_closure.control_reg_write.enable && stage_5_writeback_closure.valid;
         case (stage_5_writeback_closure.control_reg_write.source)
             REG_WRITE_FROM_COMPUTE: register_write_control.value = stage_5_writeback_closure.compute_result;
-            REG_WRITE_FROM_MEMORY:  register_write_control.value = stage_5_writeback_closure.memory_r_data;
+            REG_WRITE_FROM_MEMORY:  register_write_control.value = stage_5_writeback_memory_r_data;
             default:                register_write_control.value = 'x;
         endcase
     end
