@@ -7,7 +7,6 @@ module latch(
 );
 
     logic [XLEN-1:0] last_value;
-    logic has_last_value;
     logic last_update;
 
     always_ff @(posedge clock) begin
