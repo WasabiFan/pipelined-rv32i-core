@@ -39,9 +39,15 @@ module register_file(
                 xregs <= xregs;
             end
 
-            // Note: blocking assignment used to avoid separate writeback hazard handling
-            rs1_val = xregs[rs1];
-            rs2_val = xregs[rs2];
+            if (write_control.enable && write_control.which_register != 0 && write_control.which_register == rs1)
+                rs1_val <= write_control.value;
+            else
+                rs1_val <= xregs[rs1];
+
+            if (write_control.enable && write_control.which_register != 0 && write_control.which_register == rs2)
+                rs2_val <= write_control.value;
+            else
+                rs2_val <= xregs[rs2];
         end
     end
 

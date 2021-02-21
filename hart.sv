@@ -185,10 +185,45 @@ module hart(
     end
 
     // Regfile reads are synchronous, so we can't capture the register values as part of our closure
+    logic [XLEN-1:0] stage_3_compute_unforwarded_register_rs1_val;
+    logic [XLEN-1:0] stage_3_compute_unforwarded_register_rs2_val;
+    assign stage_3_compute_unforwarded_register_rs1_val = stage_2_register_read_register_rs1_val;
+    assign stage_3_compute_unforwarded_register_rs2_val = stage_2_register_read_register_rs2_val;
+
     logic [XLEN-1:0] stage_3_compute_register_rs1_val;
+    logic stage_3_compute_register_rs1_has_value;
+    operand_forwarder rs1_forwarder (
+        .rs                                             (stage_3_compute_closure.current_instruction.rs1),
+        .rs_value                                       (stage_3_compute_unforwarded_register_rs1_val),
+        .stage_4_memory_transaction_closure_valid       (stage_4_memory_transaction_closure.valid),
+        .stage_4_memory_transaction_register_control    (stage_4_memory_transaction_closure.control_reg_write),
+        .stage_4_memory_transaction_compute_result      (stage_4_memory_transaction_closure.compute_result),
+        .stage_5_writeback_closure_valid                (stage_5_writeback_closure.valid),
+        .stage_5_writeback_register_control             (stage_5_writeback_closure.control_reg_write),
+        .stage_5_writeback_compute_result               (stage_5_writeback_closure.compute_result),
+        .stage_5_writeback_memory_r_data                (stage_5_writeback_memory_r_data),
+        .valid                                          (stage_3_compute_register_rs1_has_value),
+        .operand_value                                  (stage_3_compute_register_rs1_val)
+    );
+
     logic [XLEN-1:0] stage_3_compute_register_rs2_val;
-    assign stage_3_compute_register_rs1_val = stage_2_register_read_register_rs1_val;
-    assign stage_3_compute_register_rs2_val = stage_2_register_read_register_rs2_val;
+    logic stage_3_compute_register_rs2_has_value;
+    operand_forwarder rs2_forwarder (
+        .rs                                             (stage_3_compute_closure.current_instruction.rs2),
+        .rs_value                                       (stage_3_compute_unforwarded_register_rs2_val),
+        .stage_4_memory_transaction_closure_valid       (stage_4_memory_transaction_closure.valid),
+        .stage_4_memory_transaction_register_control    (stage_4_memory_transaction_closure.control_reg_write),
+        .stage_4_memory_transaction_compute_result      (stage_4_memory_transaction_closure.compute_result),
+        .stage_5_writeback_closure_valid                (stage_5_writeback_closure.valid),
+        .stage_5_writeback_register_control             (stage_5_writeback_closure.control_reg_write),
+        .stage_5_writeback_compute_result               (stage_5_writeback_closure.compute_result),
+        .stage_5_writeback_memory_r_data                (stage_5_writeback_memory_r_data),
+        .valid                                          (stage_3_compute_register_rs2_has_value),
+        .operand_value                                  (stage_3_compute_register_rs2_val)
+    );
+
+    // TODO: check stage_3_compute_register_rs*_has_value and propagate validity accordingly
+    // Need to figure out how to block earlier stages from ingesting a new instruction
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_3_compute_closure_pc                       = stage_3_compute_closure.pc;
@@ -286,13 +321,11 @@ module hart(
     rv_reg_t dbg__stage_5_writeback_closure_control__reg_write__which_register = stage_5_writeback_closure.control_reg_write.which_register;
     logic dbg__stage_5_writeback_closure__control_reg_write__enable            = stage_5_writeback_closure.control_reg_write.enable;
     logic dbg__stage_5_writeback_closure__control_reg_write__source            = stage_5_writeback_closure.control_reg_write.source;
-
-    logic [XLEN-1:0] dbg__stage_5_writeback_closure__compute_result            = stage_5_writeback_closure.compute_result;
     `endif
 
     always_comb begin
-        register_write_control.which_register = stage_5_writeback_closure.control_reg_write.which_register;
         register_write_control.enable         = stage_5_writeback_closure.control_reg_write.enable && stage_5_writeback_closure.valid;
+        register_write_control.which_register = stage_5_writeback_closure.control_reg_write.which_register;
         case (stage_5_writeback_closure.control_reg_write.source)
             REG_WRITE_FROM_COMPUTE: register_write_control.value = stage_5_writeback_closure.compute_result;
             REG_WRITE_FROM_MEMORY:  register_write_control.value = stage_5_writeback_memory_r_data;
