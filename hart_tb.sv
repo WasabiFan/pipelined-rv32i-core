@@ -32,9 +32,16 @@ module hart_tb();
         .memory_mapped_io_control        (memory_mapped_io_control)
     );
 
-    assign memory_mapped_io_write_complete = 1'b1;
+    always begin
+        @(posedge memory_mapped_io_enable)
+        repeat(5) @(posedge clock);
+        memory_mapped_io_write_complete = 1'b1;
+        @(posedge clock);
+        memory_mapped_io_write_complete = 1'b0;
+    end
 
     initial begin
+        memory_mapped_io_write_complete = 1'b0;
         clock = 1'b0;
     end
 

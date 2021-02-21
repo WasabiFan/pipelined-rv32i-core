@@ -74,16 +74,35 @@ module hart(
         .r_data (instruction_memory_r_data)
     );
 
-    logic frontend_is_stalled = stage_3_compute_closure.valid && (!stage_3_compute_register_rs1_has_value || !stage_3_compute_register_rs2_has_value);
+    // Stall conditions
+    logic frontend_is_stalled;
+    logic backend_is_stalled;
+    always_comb begin
+        frontend_is_stalled = 1'b0;
+        backend_is_stalled  = 1'b0;
 
-    // TODO: mmio pauses:
-    // current_stage_is_complete = !memory_mapped_io_control.enable || (memory_mapped_io_control.enable && memory_mapped_io_write_complete);
+        // Stall the frontend only if the compute stage is missing operands (data hazard)
+        // This will stall for at most one cycle; the only hazard which can require a stall
+        // is usage of the result of a memory load, which will take one cycle to resolve.
+        if (stage_3_compute_closure.valid) begin
+            if (!stage_3_compute_register_rs1_has_value || !stage_3_compute_register_rs2_has_value)
+                frontend_is_stalled = 1'b1;
+        end
+
+        // Stall if an mmio write is still in-progress
+        if (memory_mapped_io_control.enable) begin
+            if (!memory_mapped_io_write_complete) begin
+                // If we're stalling a later stage, we must stall the earlier ones too
+                frontend_is_stalled = 1'b1;
+                backend_is_stalled  = 1'b1;
+            end
+        end
+    end
 
     // PC gen + control flow
     // Note: depends on stage 3 (compute) result
     logic [XLEN-1:0] next_pc;
-    logic is_jumping;
-    assign is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
+    logic is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
     always_comb begin
         if (frontend_is_stalled)
             next_pc = stage_1_instruction_fetch_closure.pc;
@@ -275,12 +294,18 @@ module hart(
     // =================================
     memory_transaction_closure_t stage_4_memory_transaction_closure;
     always_ff @(posedge clock) begin
-        if (reset || frontend_is_stalled) begin
+        if (reset || (frontend_is_stalled && !backend_is_stalled)) begin
             stage_4_memory_transaction_closure.valid               <= 1'b0;
             stage_4_memory_transaction_closure.pc                  <= 'x;
             stage_4_memory_transaction_closure.compute_result      <= 'x;
             stage_4_memory_transaction_closure.control_mem         <= 'x;
             stage_4_memory_transaction_closure.control_reg_write   <= 'x;
+        end else if (backend_is_stalled) begin
+            stage_4_memory_transaction_closure.valid               <= stage_4_memory_transaction_closure.valid;
+            stage_4_memory_transaction_closure.pc                  <= stage_4_memory_transaction_closure.pc;
+            stage_4_memory_transaction_closure.compute_result      <= stage_4_memory_transaction_closure.compute_result;
+            stage_4_memory_transaction_closure.control_mem         <= stage_4_memory_transaction_closure.control_mem;
+            stage_4_memory_transaction_closure.control_reg_write   <= stage_4_memory_transaction_closure.control_reg_write;
         end else begin
             stage_4_memory_transaction_closure.valid               <= stage_3_compute_closure.valid;
             stage_4_memory_transaction_closure.pc                  <= stage_3_compute_closure.pc;
@@ -311,6 +336,11 @@ module hart(
             stage_5_writeback_closure.pc                  <= 'x;
             stage_5_writeback_closure.control_reg_write   <= 'x;
             stage_5_writeback_closure.compute_result      <= 'x;
+        end else if (backend_is_stalled) begin
+            stage_5_writeback_closure.valid               <= stage_5_writeback_closure.valid;
+            stage_5_writeback_closure.pc                  <= stage_5_writeback_closure.pc;
+            stage_5_writeback_closure.control_reg_write   <= stage_5_writeback_closure.control_reg_write;
+            stage_5_writeback_closure.compute_result      <= stage_5_writeback_closure.compute_result;
         end else begin
             stage_5_writeback_closure.valid               <= stage_4_memory_transaction_closure.valid;
             stage_5_writeback_closure.pc                  <= stage_4_memory_transaction_closure.pc;
@@ -321,7 +351,13 @@ module hart(
 
     // Memory reads are synchronous, so we can't capture the memory values as part of our closure
     logic [XLEN-1:0] stage_5_writeback_memory_r_data;
-    assign stage_5_writeback_memory_r_data = data_memory_r_data;
+    latch stage_5_writeback_memory_r_data_latch (
+        .clock         (clock),
+        .reset         (reset),
+        .input_value   (data_memory_r_data),
+        .update        (!backend_is_stalled),
+        .output_value  (stage_5_writeback_memory_r_data)
+    );
 
     `ifdef SIMULATION
     logic [XLEN-1:0] dbg_stage_5_writeback_closure_pc = stage_5_writeback_closure.pc;
