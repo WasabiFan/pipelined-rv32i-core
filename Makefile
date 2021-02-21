@@ -36,7 +36,7 @@ firmware:
 build: hardware.bin
 
 hardware.json: $(FIRMWARE_HEX) all.v
-	apio raw "yosys -p \"synth_ice40 -json hardware.json\" -q all.v"
+	apio raw "yosys -p \"synth_ice40 -retime -relut -abc2 -json hardware.json\" -q all.v"
 
 hardware.asc: $(FIRMWARE_HEX) hardware.json upduino.pcf
 	apio raw "nextpnr-ice40 --up5k --package sg48 --json hardware.json --asc hardware.asc --pcf upduino.pcf -q"
@@ -46,7 +46,7 @@ hardware.bin: hardware.asc
 
 # Phony target which performs the end-to-end synthesis with full debug output
 build-verbose: $(FIRMWARE_HEX) all.v
-	apio raw "yosys -p \"synth_ice40 -json hardware.json\" all.v"
+	apio raw "yosys -p \"synth_ice40 -retime -relut -abc2 -json hardware.json\" all.v"
 	apio raw "nextpnr-ice40 --up5k --package sg48 --json hardware.json --asc hardware.asc --pcf upduino.pcf"
 	apio raw "icepack hardware.asc hardware.bin"
 
