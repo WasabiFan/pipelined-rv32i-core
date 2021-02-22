@@ -18,8 +18,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic valid;
+    `ifdef SIMULATION
     // pc is not technically required, but is preferable for debugging
     logic [XLEN-1:0] pc;
+    `endif
     logic [XLEN-1:0] compute_result;
     compute_mem_control_t control_mem;
     compute_reg_control_t control_reg_write;
@@ -27,8 +29,10 @@ typedef struct packed {
 
 typedef struct packed {
     logic valid;
+    `ifdef SIMULATION
     // pc is not technically required, but is preferable for debugging
     logic [XLEN-1:0] pc;
+    `endif
     logic [XLEN-1:0] compute_result;
     compute_reg_control_t control_reg_write;
 } writeback_closure_t;
@@ -296,19 +300,25 @@ module hart(
     always_ff @(posedge clock) begin
         if (reset || (frontend_is_stalled && !backend_is_stalled)) begin
             stage_4_memory_transaction_closure.valid               <= 1'b0;
+            `ifdef SIMULATION
             stage_4_memory_transaction_closure.pc                  <= 'x;
+            `endif
             stage_4_memory_transaction_closure.compute_result      <= 'x;
             stage_4_memory_transaction_closure.control_mem         <= 'x;
             stage_4_memory_transaction_closure.control_reg_write   <= 'x;
         end else if (backend_is_stalled) begin
             stage_4_memory_transaction_closure.valid               <= stage_4_memory_transaction_closure.valid;
+            `ifdef SIMULATION
             stage_4_memory_transaction_closure.pc                  <= stage_4_memory_transaction_closure.pc;
+            `endif
             stage_4_memory_transaction_closure.compute_result      <= stage_4_memory_transaction_closure.compute_result;
             stage_4_memory_transaction_closure.control_mem         <= stage_4_memory_transaction_closure.control_mem;
             stage_4_memory_transaction_closure.control_reg_write   <= stage_4_memory_transaction_closure.control_reg_write;
         end else begin
             stage_4_memory_transaction_closure.valid               <= stage_3_compute_closure.valid;
+            `ifdef SIMULATION
             stage_4_memory_transaction_closure.pc                  <= stage_3_compute_closure.pc;
+            `endif
             stage_4_memory_transaction_closure.compute_result      <= stage_3_compute_compute_result;
             stage_4_memory_transaction_closure.control_mem         <= stage_3_compute_control_mem;
             stage_4_memory_transaction_closure.control_reg_write   <= stage_3_compute_control_reg_write;
@@ -333,17 +343,23 @@ module hart(
     always_ff @(posedge clock) begin
         if (reset) begin
             stage_5_writeback_closure.valid               <= 1'b0;
+            `ifdef SIMULATION
             stage_5_writeback_closure.pc                  <= 'x;
+            `endif
             stage_5_writeback_closure.control_reg_write   <= 'x;
             stage_5_writeback_closure.compute_result      <= 'x;
         end else if (backend_is_stalled) begin
             stage_5_writeback_closure.valid               <= stage_5_writeback_closure.valid;
+            `ifdef SIMULATION
             stage_5_writeback_closure.pc                  <= stage_5_writeback_closure.pc;
+            `endif
             stage_5_writeback_closure.control_reg_write   <= stage_5_writeback_closure.control_reg_write;
             stage_5_writeback_closure.compute_result      <= stage_5_writeback_closure.compute_result;
         end else begin
             stage_5_writeback_closure.valid               <= stage_4_memory_transaction_closure.valid;
+            `ifdef SIMULATION
             stage_5_writeback_closure.pc                  <= stage_4_memory_transaction_closure.pc;
+            `endif
             stage_5_writeback_closure.control_reg_write   <= stage_4_memory_transaction_closure.control_reg_write;
             stage_5_writeback_closure.compute_result      <= stage_4_memory_transaction_closure.compute_result;
         end
