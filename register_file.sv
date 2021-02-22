@@ -3,7 +3,6 @@ parameter num_regs = 32;
 
 module register_file_half(
     input logic clock,
-    input logic reset,
 
     input rv_reg_t rs,
     input reg_write_control_t write_control,
@@ -37,7 +36,6 @@ endmodule
 
 module register_file(
     input logic clock,
-    input logic reset,
 
     input rv_reg_t rs1,
     input rv_reg_t rs2,
@@ -63,7 +61,6 @@ module register_file(
 
     register_file_half rs1_half (
         .clock            (clock),
-        .reset            (reset),
         .rs               (rs1),
         .write_control    (write_control),
         .val              (rs1_val)
@@ -71,7 +68,6 @@ module register_file(
 
     register_file_half rs2_half (
         .clock            (clock),
-        .reset            (reset),
         .rs               (rs2),
         .write_control    (write_control),
         .val              (rs2_val)

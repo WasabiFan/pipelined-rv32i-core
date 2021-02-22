@@ -185,7 +185,6 @@ module hart(
     logic [XLEN-1:0] stage_2_register_read_register_rs1_val, stage_2_register_read_register_rs2_val;
     register_file regfile (
         .clock            (clock),
-        .reset            (reset),
         .rs1              (stage_2_register_read_current_instruction.rs1),
         .rs2              (stage_2_register_read_current_instruction.rs2),
         .write_control    (register_write_control),
