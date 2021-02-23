@@ -1,11 +1,13 @@
 `include "sim_utils.sv"
 
 typedef struct packed {
+    logic was_jump_target;
     logic valid;
     logic [XLEN-1:0] pc;
 } instruction_fetch_closure_t;
 
 typedef struct packed {
+    logic was_jump_target;
     logic valid;
     logic [XLEN-1:0] pc;
 } register_read_closure_t;
@@ -104,17 +106,68 @@ module hart(
     end
 
     // PC gen + control flow
-    // Note: depends on stage 3 (compute) result
-    logic [XLEN-1:0] next_pc;
-    logic is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
+    // Note: depends on stage 3 (compute) result and pipeline reg from stage 2 (reg read)
+    logic control_flow_is_jumping = !reset && stage_3_compute_closure.valid && stage_3_compute_control_jump_target.enable;
+    logic control_flow_pipeline_has_diverged;
     always_comb begin
-        if (frontend_is_stalled)
-            next_pc = stage_1_instruction_fetch_closure.pc;
-        else if (stage_3_compute_control_jump_target.enable)
-            next_pc = stage_3_compute_control_jump_target.target_addr;
-        else
-            next_pc = stage_1_instruction_fetch_closure.pc + 4;
+        control_flow_pipeline_has_diverged = 1'b0;
+
+        if (!reset && stage_3_compute_closure.valid) begin
+            // If the currently-computed instruction's taken/not-taken result differs from
+            // what we thought when ingesting the instruction, we must be diverging
+            if (stage_3_compute_control_jump_target.enable != stage_2_register_read_closure.was_jump_target)
+                control_flow_pipeline_has_diverged = 1'b1;
+
+            // If the currently-computed instruction has decided to jump, but its target differs
+            // from the instruction enqueued after it, then we must have mis-predicted
+            if (stage_3_compute_control_jump_target.enable && stage_3_compute_control_jump_target.target_addr != stage_2_register_read_closure.pc)
+                control_flow_pipeline_has_diverged = 1'b1;
+        end
     end
+
+    logic [XLEN-1:0] next_pc;
+    logic next_pc_is_jump_target;
+    always_comb begin
+        if (frontend_is_stalled) begin
+            next_pc = stage_1_instruction_fetch_closure.pc;
+            next_pc_is_jump_target = stage_1_instruction_fetch_closure.was_jump_target;
+        end else if (control_flow_pipeline_has_diverged) begin
+            // The branch predictor made an error; time to fix it!
+            if (control_flow_is_jumping) begin
+                // divergence was caused by an unexpected jump
+                next_pc = stage_3_compute_control_jump_target.target_addr;
+                next_pc_is_jump_target = 1'b1;
+            end else begin
+                // divergence was caused by a speculatively taken jump which turned out not to be taken
+                next_pc = stage_3_compute_closure.pc + 4;
+                next_pc_is_jump_target = 1'b0;
+            end
+        end else if (branch_predictor_predicted_taken) begin
+            next_pc = branch_predictor_predicted_jump_target;
+            next_pc_is_jump_target = 1'b1;
+        end else begin
+            next_pc = stage_1_instruction_fetch_closure.pc + 4;
+            next_pc_is_jump_target = 1'b0;
+        end
+    end
+
+    logic [XLEN-1:0] branch_predictor_predicted_jump_target;
+    logic branch_predictor_predicted_taken;
+    // Note: branch predictor is computing results for the instruction currently
+    // in the "fetch" stage
+    branch_predictor branch_predictor (
+        .clock                          (clock),
+        .enable                         (!frontend_is_stalled),
+
+        .executing_branch_active        (stage_3_compute_closure.valid && is_possible_jump(stage_3_compute_closure.current_instruction.opcode)),
+        .executing_branch_pc            (stage_3_compute_closure.pc),
+        .executing_branch_target        (stage_3_compute_control_jump_target.target_addr),
+        .executing_branch_taken         (!frontend_is_stalled && stage_3_compute_control_jump_target.enable),
+
+        .incoming_instruction_pc        (next_pc),
+        .predicted_jump_target_taken    (branch_predictor_predicted_taken),
+        .predicted_jump_target          (branch_predictor_predicted_jump_target)
+    );
 
     // =================================
     // STAGE 1: INSTRUCTION FETCH
@@ -122,11 +175,13 @@ module hart(
     instruction_fetch_closure_t stage_1_instruction_fetch_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
-            stage_1_instruction_fetch_closure.pc    <= reset_vector;
-            stage_1_instruction_fetch_closure.valid <= 1'b1;
+            stage_1_instruction_fetch_closure.pc              <= reset_vector;
+            stage_1_instruction_fetch_closure.was_jump_target <= 1'b0;
+            stage_1_instruction_fetch_closure.valid           <= 1'b1;
         end else begin
-            stage_1_instruction_fetch_closure.pc    <= next_pc;
-            stage_1_instruction_fetch_closure.valid <= 1'b1;
+            stage_1_instruction_fetch_closure.pc              <= next_pc;
+            stage_1_instruction_fetch_closure.was_jump_target <= next_pc_is_jump_target;
+            stage_1_instruction_fetch_closure.valid           <= 1'b1;
         end
     end
 
@@ -145,14 +200,17 @@ module hart(
     register_read_closure_t stage_2_register_read_closure;
     always_ff @(posedge clock) begin
         if (reset) begin
-            stage_2_register_read_closure.valid               <= 1'b0;
-            stage_2_register_read_closure.pc                  <= 'x;
+            stage_2_register_read_closure.valid           <= 1'b0;
+            stage_2_register_read_closure.pc              <= 'x;
+            stage_2_register_read_closure.was_jump_target <= stage_1_instruction_fetch_closure.was_jump_target;
         end else if (frontend_is_stalled) begin
-            stage_2_register_read_closure.valid               <= stage_2_register_read_closure.valid;
-            stage_2_register_read_closure.pc                  <= stage_2_register_read_closure.pc;
+            stage_2_register_read_closure.valid           <= stage_2_register_read_closure.valid;
+            stage_2_register_read_closure.pc              <= stage_2_register_read_closure.pc;
+            stage_2_register_read_closure.was_jump_target <= stage_2_register_read_closure.was_jump_target;
         end else begin
-            stage_2_register_read_closure.valid               <= stage_1_instruction_fetch_closure.valid && !is_jumping;
-            stage_2_register_read_closure.pc                  <= stage_1_instruction_fetch_closure.pc;
+            stage_2_register_read_closure.valid           <= stage_1_instruction_fetch_closure.valid && !control_flow_pipeline_has_diverged;
+            stage_2_register_read_closure.pc              <= stage_1_instruction_fetch_closure.pc;
+            stage_2_register_read_closure.was_jump_target <= stage_1_instruction_fetch_closure.was_jump_target;
         end
     end
 
@@ -211,7 +269,7 @@ module hart(
             stage_3_compute_closure.pc                  <= stage_3_compute_closure.pc;
             stage_3_compute_closure.current_instruction <= stage_3_compute_closure.current_instruction;
         end else begin
-            stage_3_compute_closure.valid               <= stage_2_register_read_closure.valid && !is_jumping && stage_2_register_read_current_instruction.opcode != OPCODE_UNKNOWN;
+            stage_3_compute_closure.valid               <= stage_2_register_read_closure.valid && !control_flow_pipeline_has_diverged && stage_2_register_read_current_instruction.opcode != OPCODE_UNKNOWN;
             stage_3_compute_closure.pc                  <= stage_2_register_read_closure.pc;
             stage_3_compute_closure.current_instruction <= stage_2_register_read_current_instruction;
         end
