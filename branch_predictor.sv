@@ -1,5 +1,5 @@
-// 2^10 = 1024 entries
-parameter BTB_LOG_NUM_ENTRIES = 10;
+// 2^8 = 256 entries
+parameter BTB_LOG_NUM_ENTRIES = 8;
 parameter BTB_NUM_ENTRIES = 2**BTB_LOG_NUM_ENTRIES;
 parameter BTB_INDEX_BITS = BTB_LOG_NUM_ENTRIES;
 // Instructions are four-byte-aligned, so ignore the lower two bits
