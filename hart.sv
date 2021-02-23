@@ -450,4 +450,42 @@ module hart(
             default:                register_write_control.value = 'x;
         endcase
     end
+
+    `ifdef SIMULATION
+    integer perf_counter_num_instructions_fetched;
+    integer perf_counter_num_instructions_retired;
+    integer perf_counter_num_jumps_retired;
+    integer perf_counter_num_jumps_taken;
+    integer perf_counter_num_jumps_misspeculated;
+
+    always_ff @(posedge clock) begin
+        if (reset) begin
+            perf_counter_num_instructions_fetched <= 0;
+            perf_counter_num_instructions_retired <= 0;
+            perf_counter_num_jumps_retired        <= 0;
+            perf_counter_num_jumps_taken          <= 0;
+            perf_counter_num_jumps_misspeculated  <= 0;
+        end else begin
+            if (stage_5_writeback_closure.valid && !backend_is_stalled) begin
+                perf_counter_num_instructions_retired <= perf_counter_num_instructions_retired + 1;
+            end
+
+            if (stage_1_instruction_fetch_closure.valid && !frontend_is_stalled) begin
+                perf_counter_num_instructions_fetched <= perf_counter_num_instructions_fetched + 1;
+            end
+
+            if (stage_3_compute_closure.valid && is_possible_jump(stage_3_compute_closure.current_instruction.opcode) && !frontend_is_stalled) begin
+                perf_counter_num_jumps_retired <= perf_counter_num_jumps_retired + 1;
+            end
+
+            if (control_flow_is_jumping && !frontend_is_stalled) begin
+                perf_counter_num_jumps_taken <= perf_counter_num_jumps_taken + 1;
+            end
+
+            if (control_flow_pipeline_has_diverged && !frontend_is_stalled) begin
+                perf_counter_num_jumps_misspeculated <= perf_counter_num_jumps_misspeculated + 1;
+            end
+        end
+    end
+    `endif
 endmodule;
