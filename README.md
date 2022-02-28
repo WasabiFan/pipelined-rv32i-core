@@ -1,11 +1,29 @@
-# UPduino V3.0 template
+# Toy 5-stage in-order RISC-V CPU
 
-This repo is intended to be a starting point for SystemVerilog projects targeting the UPduino V3.0. It is intentionally opinionated, and may require modification to suit others' use-cases. In short, this project is designed for:
-- Easy set-up (most dependencies are installed via apio)
-- SystemVerilog support via [sv2v](https://github.com/zachjs/sv2v)
-- Multiple separate top-level testbenches
+This repo houses my implementation of a 5-stage RV32I core and simple SOC peripherals for testing. It targets the [UPduino](https://tinyvision.ai/products/upduino-v3-0) ICE40 development board, although pretty much any ICE40-based dev board should work with minimal changes to the build scripts.
 
-While it uses apio, many of the Make rules are customized to invoke iverilog/verilator/gtkwave directly.
+This repo is descended from my [UPduino template project](https://github.com/WasabiFan/apio-upduino-template), and as such it uses a fully open-source toolchain.
+
+This core was implemented for a computer architecture class I took at University of Washington. The minimal C standard library replacement in the `firmware/` folder is derived from sample code provided by the professor, Mark Oskin. I have made miscellaneous modifications. All other contents of this repository are mine.
+
+This was my second RV32I core, and first pipelined design. It's likely not suited for any real workloads. However, I do feel it is well-written and am happy with the results.
+
+## Features and details
+
+- RV32I core with 5-stage in-order pipeline
+- Harvard architecture (separate instruction and data memories)
+- Branch prediction with a combined Branch Target Buffer (BTB) and Branch History Table (BHT)
+  - When run in simulation, performance counters for branch prediction effectiveness
+- Memory and register file synthesize to hardened SRAMs
+- UART transmitter peripheral with associated stdlib support
+
+Note that BTB and BHT designs are quite nuanced, and my implementation was written in an afternoon after reading seminal papers on the subject. I make no guarantees on optimality or even true correctness. That being said, it seems to work pretty well.
+
+## License
+
+I'm witholding the license on this code because some of the software libraries were provided by a professor and are not mine to redistribute. The core I have implemented is also not particularly well verified and I can't imagine a sensible use-case. However, if, against your better judgement, you are in some way interested in using code of mine from this repo, please reach out.
+
+This should go without saying, but: **if you are a student, you may not use anything in this repo for your own assignments.**
 
 ## Development environment
 
@@ -68,48 +86,11 @@ Reload the udev rules so the new one is picked up without reboot:
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-## Getting started
+## Usage
 
-1. Clone this repo (or your fork of it) locally.
-2. `cd` into the directory.
-3. Run `make` and confirm no errors are printed.
-4. Run `make sim-serial_transmitter`. It should open gtkwave with the simulation output from the `serial_transmitter`'s testbench.
-5. Ensure your UPduino is connected and run `make upload`. It should synthesize for and flash the device. You should now see the green and blue LEDs blinking.
-6. Unplug and re-plug the UPduino.
-7. Temporarily make a connection between pin 2 and GND on the UPduino. (Make sure not to short any other pins!) This is the default reset pin I've configured. While this connection is held, the red LED should be on.
-8. On your PC, run `screen /dev/ttyUSB0 9600`. You should see "Hello world!" printed repetitively.
-9. Exit `screen` by pressing <kbd>Ctrl</kbd>+<kbd>A</kbd> then <kbd>\\</kbd> and confirming the prompt with <kbd>y</kbd>.
+See the list of `make` targets below.
 
-## What's included
-
-Files of interest in this repo:
-- The Makefile automates stitching together `sv2v` and the various `apio` tools.
-- `top.sv` is the top-level module. Currently, there's a serial transmission demo and some LED blinking logic. Feel free to change these as desired.
-- `serial_transmitter.sv` is a very simple UART module for sending text back to the host PC. It accepts one byte at a time.
-- `serial_transmitter_tb.sv` is a testbench for the above.
-- `upduino.pcf` specifies the pin mappings on the UPduino. It is the stock UPduino PCF file from the original sample repo, but with a pull-up resistor enabled on GPIO pin 2 to use as a reset pin.
-
-## General workflow
-
-- Develop in `.sv` files.
-- Verify and lint with `make`.
-- Write testbenches in files with names ending in `_tb.sv` (see below). Iterate on the design in simulation.
-- When ready, `make upload` will upload to the board.
-- Test your design with output from serial (UART) or the LEDs.
-  - As mentioned above, you can monitor serial output with `screen /dev/ttyUSB0 9600`.
-
-## Notes and catches
-
-**Workflow:**
-- The Makefile transpiles your SystemVerilog code into plain Verilog. Everything but the testbenches is automatically combined into a file called `all.v`. This file should be ignored and will be automatically re-generated; don't edit it.
-- Testbenches are each transpiled into their own file, of the same name as the original, but with the `.v` extension. The same as above applies.
-- Errors from most tasks will be attributed to `all.v` rather than your source `.sv` files. When you get an error, check the relevant line in `all.v`; it should be clear where it corresponds to in the original SystemVerilog.
-- Testbenches aren't validated by `make lint`, `make verify` or `make build`. You'll have to watch for error output or misbehavior in your testbenches while simulating.
-
-**Testing in hardware:**
-- The "reset" signal is, as configured in the provided code, GPIO pin 2. "resetting" means connecting pin 2 to GND temporarily.
-- If your current code uses the serial line, it may cause intermittent errors while uploading to the board (`make upload`). If it fails or freezes, cancel and re-try. It'll work after a few times.
-- After uploading code, if you want the serial output to work (e.g. via the `screen` command) you will need to unplug and re-plug the board via USB (and remember to reset it!).
+Note that the reset pin is, by default, pin 2. It is active-low, so tie it to GND to reset.
 
 ## `make` targets
 
@@ -118,16 +99,3 @@ Files of interest in this repo:
 - `make build`: synthesize your code for the UPduino.
 - `make sim-MODNAME`: simulate the testbench called `MODNAME_tb.sv` and open the results in `gtkwave`.
 - `make upload`: synthesize and upload to a real board.
-
-## Testbenches
-
-Testbenches are authored in files ending with `_tb.sv`. I recommend you name them with the same prefix as the module you're testing. For example, the testbench for `serial_transmitter.sv` is named `serial_transmitter_tb.sv` and can be run with `make sim-serial_transmitter`.
-
-When creating a new testbench, it is probably easiest to copy the given one for `serial_transmitter`. Note that every testbench should have a block like the following at the top of the module, with names changed appropriately:
-
-```verilog
-initial begin
-    $dumpfile("modname.vcd");
-    $dumpvars(0,modname_tb);
-end
-```
