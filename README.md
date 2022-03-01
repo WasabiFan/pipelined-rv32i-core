@@ -8,6 +8,8 @@ This core was implemented for a computer architecture class I took at University
 
 This was my second RV32I core, and first pipelined design. It's likely not suited for any real workloads. However, I do feel it is well-written and am happy with the results.
 
+`hart.sv` is the root module for the core. `top.sv` is the true top module, which instantiates the core with some peripherals.
+
 ## Features and details
 
 - RV32I core with 5-stage in-order pipeline
